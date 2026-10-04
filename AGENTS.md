@@ -1,235 +1,92 @@
-# OKOCRAFT AGENTS.md
+# OKOCRAFT Agent Instructions
 
-This document defines the shared development instructions for coding agents working in OKOCRAFT repositories.
+This file is the shared baseline for coding agents working in OKOCRAFT repositories.
 
-It is intended to be reusable across the organization. A repository MAY add more specific instructions for its own architecture, platform, build, or release process. Repository-specific instructions take precedence where they are more specific, but they SHOULD NOT weaken correctness, security, lifecycle, or compatibility requirements defined by the shared guidelines.
+Keep it as a short map and set of cross-cutting invariants. Detailed policy belongs in `okocraft/docs`; repository- or module-specific instructions should add only the context needed for that scope.
 
-## Canonical Guidelines
+## How to Work
 
-The complete organization guidelines live in `okocraft/docs`:
+- Investigate before changing code or making claims about it. Read the relevant files, tests, and nearby configuration instead of guessing.
+- Read only the guidance relevant to the task. Do not preload every guideline or repository document for small changes.
+- Follow established local patterns when they are compatible with the applicable OKOCRAFT guideline and platform contract.
+- Keep the change focused. Do not migrate or refactor unrelated working code solely for stylistic consistency.
+- Preserve existing public APIs, configuration, persistent data, message keys, and operator workflows unless the task intentionally changes them.
+- For complex or multi-stage work, keep a lightweight plan and update it as evidence changes. Do not require planning artifacts for trivial edits.
+- Within the available permissions, continue through implementation and relevant non-destructive verification without asking for approval at every routine step.
+- Ask when a decision materially changes scope, compatibility, externally visible behavior, or requires an irreversible/destructive action that was not requested.
 
-- [Java Project, Gradle, and CI Guidelines](https://github.com/okocraft/docs/blob/main/dev/guidelines/java-project-gradle-and-ci.md)
-- [Testing Guidelines](https://github.com/okocraft/docs/blob/main/dev/guidelines/java-testing.md)
-- [Paper and Folia Scheduling and Threading Guidelines](https://github.com/okocraft/docs/blob/main/dev/guidelines/paper-folia-scheduling-and-threading.md)
-- [Plugin Lifecycle and Resource Ownership Guidelines](https://github.com/okocraft/docs/blob/main/dev/guidelines/plugin-lifecycle-and-resource-ownership.md)
-- [Configuration and Reload Guidelines](https://github.com/okocraft/docs/blob/main/dev/guidelines/configuration-and-reload.md)
-- [Message Formatting Guidelines](https://github.com/okocraft/docs/blob/main/dev/guidelines/message-formatting.md)
-- [Java Message Definitions and Localization](https://github.com/okocraft/docs/blob/main/dev/guidelines/java-messages.md)
+When the agent harness supports hierarchical instructions, use the most specific applicable repository or module instructions. If instructions conflict or would weaken a correctness, security, lifecycle, or compatibility invariant, surface the conflict instead of guessing.
 
-Use those documents as the source of truth when a task touches the corresponding area. This file summarizes the defaults that most implementation work should follow.
+## Canonical Guidance
 
-## 1. Before Making Changes
+Read the detailed guideline only when the task touches that concern:
 
-Before editing code:
+| Concern | Source of truth |
+| --- | --- |
+| Java project structure, Gradle, dependencies, CI, Renovate | [Java Project, Gradle, and CI](https://github.com/okocraft/docs/blob/main/dev/guidelines/java-project-gradle-and-ci.md) |
+| Test design and scope | [Testing](https://github.com/okocraft/docs/blob/main/dev/guidelines/java-testing.md) |
+| Paper/Folia scheduling, threading, async boundaries | [Paper and Folia Scheduling and Threading](https://github.com/okocraft/docs/blob/main/dev/guidelines/paper-folia-scheduling-and-threading.md) |
+| Plugin lifecycle and long-lived resources | [Plugin Lifecycle and Resource Ownership](https://github.com/okocraft/docs/blob/main/dev/guidelines/plugin-lifecycle-and-resource-ownership.md) |
+| Configuration, validation, reload | [Configuration and Reload](https://github.com/okocraft/docs/blob/main/dev/guidelines/configuration-and-reload.md) |
+| User-facing wording and localization | [Message Formatting](https://github.com/okocraft/docs/blob/main/dev/guidelines/message-formatting.md) |
+| Java message declarations and translation loading | [Java Messages and Localization](https://github.com/okocraft/docs/blob/main/dev/guidelines/java-messages.md) |
 
-1. Read the repository's own `AGENTS.md`, README, build files, and relevant module structure.
-2. Identify the target platforms and runtime boundaries, such as Paper, Folia, Velocity, or shared code.
-3. Inspect nearby code and tests before introducing a new abstraction or pattern.
-4. Prefer an existing project or organization convention when it already solves the problem correctly.
-5. Verify current upstream behavior when the change depends on an external API or tool whose contract may have changed.
+Do not duplicate a detailed guideline into local agent instructions. Point to the source of truth and add only repository-specific exceptions or facts.
 
-Do not infer an organization-wide rule from a single repository when implementations differ across projects.
+## Cross-cutting Invariants
 
-Do not refactor unrelated code merely to make it match a newer preferred style.
+- New code and materially changed code SHOULD follow current guidelines. Existing working code does not need migration solely for consistency.
+- Do not introduce an abstraction without a real boundary or repeated need.
+- Keep common/shared modules free of platform APIs unless the module intentionally owns that platform dependency.
+- Verify current upstream documentation or source before relying on a changing external contract such as Paper, Folia, Velocity, Gradle, Configurate, Adventure, or GitHub Actions.
+- Do not treat incidental runtime implementation details as supported platform contracts.
+- Every long-lived task, registration, executor, pool, client, or other resource MUST have a clear owner and retirement path.
+- Replacement and reload logic MUST have a clear commit point. Failure before commit leaves the previous working state active; cleanup failure after commit is not implicit rollback.
+- Tests SHOULD verify observable behavior with the lightest environment that proves it correctly.
+- A bug fix SHOULD include a regression test when the behavior is deterministic and reasonably testable.
+- Do not encode transient Java, Minecraft, dependency, or tool versions as organization policy unless the version itself is the intended rule.
 
-## 2. Scope and Migration
+## Paper, Folia, and Velocity
 
-Shared guidelines define defaults for new code and code being materially changed.
+When relevant, read the scheduling and lifecycle guidelines before implementation.
 
-Existing working implementations do not need to be migrated solely for stylistic consistency. Migrate when there is a concrete correctness, compatibility, security, or maintainability benefit.
+- Paper-only or Paper/Folia code SHOULD call Paper scheduling APIs directly. Do not add a Paper-vs-Folia scheduler wrapper merely to select scheduler implementations.
+- Introduce a scheduler abstraction when shared application logic genuinely crosses platform boundaries, such as Paper and Velocity.
+- Access region-owned entity/player state on the entity scheduler; location/block/chunk state on the region scheduler; explicitly global-region-owned state on the global scheduler; blocking I/O off tick-owning schedulers.
+- The global region scheduler is not a universal main thread.
+- Async code MUST NOT read or mutate region-owned state unless the platform contract permits it.
+- Outbound-only operations known to be safe off-thread, such as sending an already-constructed Adventure message without reading player/world state, MAY remain async. Do not generalize this to the `Player` API as a whole.
+- A `JavaPlugin` constructor MUST NOT perform platform-dependent initialization or acquire runtime resources.
 
-Preserve compatibility with existing public APIs, persistent data, configuration files, message keys, and operator workflows unless the task explicitly changes that contract.
+## Configuration and Messages
 
-## 3. Change Discipline
+When relevant, read the corresponding detailed guideline before implementation.
 
-Keep changes focused on the requested behavior.
+- Paper-side configuration SHOULD use Paper's Configurate runtime; the Paper artifact MUST NOT bundle its own Configurate runtime.
+- Validate and prepare configuration before publication. Do not overwrite administrator-edited configuration merely to regenerate defaults.
+- English is the semantic source of truth for user-facing messages, and new message systems MUST support English and Japanese by default.
+- Keep localizable text out of application logic. New Java message systems SHOULD follow the current OKOCRAFT `mcmsgdef` architecture and use named placeholders.
 
-- Do not introduce abstractions without a real boundary or repeated need.
-- Prefer small, explicit components over frameworks created for hypothetical future use.
-- Preserve established naming and module boundaries unless changing them is part of the task.
-- Avoid broad cleanup in the same change as a behavioral fix unless the cleanup is necessary to make the fix correct.
-- Keep shared/common modules free from platform APIs unless the module intentionally owns that platform dependency.
+## Completion
 
-When a change crosses modules or platforms, make ownership and data flow explicit.
+A coding task is complete when the requested behavior is implemented and the available evidence supports it.
 
-## 4. Java Projects, Build, and Dependencies
+Before finishing:
 
-New Java projects SHOULD use Gradle with the Kotlin DSL. Existing supported Maven projects do not need to migrate solely for consistency.
+1. run the repository's relevant tests, build, lint, or other verification commands;
+2. fix failures caused by the requested change and rerun the affected checks;
+3. review the final diff for unintended scope, compatibility changes, and generated or temporary files;
+4. report verification that could not be run and why; and
+5. summarize material behavior or compatibility implications.
 
-For Gradle projects:
+Do not publish, release, deploy, merge, or perform destructive data changes unless the user or repository workflow explicitly requires it.
 
-- use the Gradle Wrapper;
-- prefer the established OKOCRAFT Gradle plugins when they already provide the required convention;
-- use version catalogs for non-trivial dependency sets;
-- choose the narrowest dependency scope that matches the runtime and public API contract; and
-- keep platform-specific dependencies in platform-specific modules.
+## Maintaining These Instructions
 
-Do not bundle a dependency merely because it happens to simplify local resolution. If the target platform contract or an explicit OKOCRAFT policy provides a dependency to plugins, do not package another copy into that platform artifact.
+Keep this file concise and provider-neutral.
 
-Do not hard-code current Java, Minecraft, dependency, or tool versions into shared policy. Use the versions selected by the repository and current platform requirements.
-
-Use reusable workflows from `okocraft/workflows` and shared Renovate presets from `okocraft/renovate-config` where applicable.
-
-## 5. Testing
-
-Test observable behavior rather than implementation details.
-
-Use the lightest test environment that can verify the behavior correctly.
-
-Tests SHOULD cover relevant:
-
-- successful behavior;
-- failure behavior;
-- boundary values;
-- lifecycle transitions;
-- replacement or reload failure;
-- concurrency behavior where shared state is involved; and
-- platform adapters where the platform contract is part of the behavior.
-
-Do not add mocks merely to reproduce an entire Paper or Velocity runtime. Separate project-owned logic from platform boundaries so the logic can be tested directly.
-
-A change that fixes a reproducible bug SHOULD include a regression test when the behavior can be tested deterministically.
-
-Use the repository's documented build or verification command before considering the change complete.
-
-## 6. Paper and Folia Scheduling
-
-For Paper-only or Paper/Folia code, use Paper's scheduling APIs directly. Do not create a Paper-vs-Folia scheduler abstraction merely to select different scheduler implementations.
-
-Introduce a scheduling abstraction when application logic genuinely crosses platform boundaries, such as shared Paper and Velocity code.
-
-Choose the scheduler according to the platform state being accessed:
-
-- region-owned entity or player state: entity scheduler;
-- location, block, or chunk state: region scheduler;
-- state explicitly owned by Folia's global region: global region scheduler;
-- blocking I/O or work independent of tick-owned state: async scheduler.
-
-The global region scheduler is not a universal main thread.
-
-Async code MUST NOT read or mutate region-owned state unless the platform contract explicitly permits that operation.
-
-Outbound-only player operations MAY be performed asynchronously when they do not read or mutate region-owned player, entity, world, or chunk state and the operation is known to be safe off-thread. Sending an already-constructed Adventure message is a typical example. Do not generalize this exception to the `Player` API as a whole.
-
-When crossing an async boundary:
-
-1. capture required platform state on its owner;
-2. convert it to immutable or independently thread-safe data;
-3. perform blocking work asynchronously;
-4. schedule state-changing results back to the correct owner; and
-5. revalidate assumptions before applying the result.
-
-Do not synchronously wait for another region or async operation from a tick-owning scheduler.
-
-Shared mutable state accessed by multiple regions or async tasks MUST have an explicit concurrency model.
-
-## 7. Task and Resource Lifecycle
-
-Every long-lived resource MUST have an identifiable owner responsible for retirement. The platform MAY be the owner when its lifecycle contract guarantees cleanup.
-
-This applies to:
-
-- scheduled tasks;
-- executors and threads;
-- database pools and clients;
-- listeners and subscriptions;
-- translation sources;
-- external plugin integrations;
-- caches with background work;
-- static/global registrations; and
-- other resources that can outlive a method call.
-
-The component that acquires or registers a resource owns it unless ownership is explicitly transferred.
-
-A task MUST be cancelled or otherwise made unable to affect obsolete state when its feature or runtime state is disabled, replaced, or reconfigured.
-
-A `JavaPlugin` constructor MUST NOT perform platform-dependent initialization or acquire runtime resources. Use the appropriate bootstrap/lifecycle API, `onLoad`, or `onEnable`.
-
-Startup code must handle partial initialization. If required initialization fails, clean up resources already acquired and fail closed rather than leaving a partially active plugin.
-
-Shutdown and cleanup SHOULD be idempotent where practical. Continue cleanup after one independent resource fails to close.
-
-Stop producers of work before closing the resources or consumers they depend on.
-
-## 8. Configuration and Reload
-
-Paper-side configuration SHOULD use the Configurate runtime provided by Paper.
-
-A Paper plugin artifact MUST NOT bundle or shade its own Configurate runtime. A module that imports Configurate still needs an appropriate compile-time-only dependency when shared build logic does not supply one.
-
-Prefer typed configuration models over scattered raw node access.
-
-Configuration must be validated before becoming active.
-
-Treat reload as prepare then commit:
-
-1. read and deserialize the next configuration;
-2. validate and normalize it;
-3. prepare dependent state where possible;
-4. publish the new coherent runtime state at a clear commit point; and
-5. retire the previous state.
-
-Before the commit point, failure MUST leave the previous runtime state active and newly prepared resources must be retired.
-
-After the commit point, failure while retiring old resources is a cleanup failure; do not claim rollback unless the implementation actually provides it.
-
-Do not overwrite administrator-edited configuration merely to regenerate defaults or normalize formatting.
-
-Avoid blocking configuration file I/O on Folia region, entity, or global tick threads when it can be performed asynchronously.
-
-## 9. User-facing Messages and Localization
-
-English is the semantic source of truth for user-facing messages.
-
-New message systems MUST support English and Japanese by default.
-
-Keep localizable user-facing text out of application logic. Declare messages through the project's message layer and send message keys/components from commands, listeners, services, and GUI code.
-
-For new Java message systems, prefer the current OKOCRAFT `mcmsgdef` architecture:
-
-- English defaults declared in Java;
-- named MiniMessage arguments;
-- Japanese defaults in language resources;
-- runtime-editable language files;
-- missing defaults appended without overwriting existing administrator values; and
-- one registered Adventure translation source per plugin message system.
-
-Use named placeholders for new systems. Preserve the same placeholder set across translations while allowing natural word order.
-
-Do not translate machine-facing commands, permissions, identifiers, file names, or literal values.
-
-For Japanese:
-
-- use natural Japanese rather than word-for-word translation;
-- use polite `です・ます` style for normal sentences;
-- use `。` for complete sentences and omit terminal punctuation for labels/headings;
-- keep numeric counters and units naturally attached, such as `<amount>個` and `<seconds>秒`.
-
-Preserve legacy placeholder or color syntax when an existing parser requires it. Do not migrate legacy message formats as an unrelated side effect.
-
-## 10. External APIs and Current Behavior
-
-When implementation correctness depends on Paper, Folia, Velocity, Gradle, Configurate, Adventure, GitHub Actions, or another external system, verify the current contract before making a normative or architectural decision.
-
-Prefer official upstream documentation or source.
-
-Do not rely on incidental runtime implementation details as if they were a supported API contract.
-
-Do not copy a concrete dependency or Java version from shared documentation; use the repository's approved version source.
-
-## 11. Review Before Completion
-
-Before considering a change complete, verify that:
-
-- the implementation follows repository-local instructions and the applicable shared guidelines;
-- no unrelated migration or refactor was introduced;
-- platform/thread ownership is correct;
-- long-lived resources have retirement behavior;
-- reload/replacement failure leaves runtime state coherent;
-- tests cover the changed behavior where practical;
-- the repository's verification command succeeds or any inability to run it is clearly reported;
-- user-facing messages follow localization conventions;
-- platform-provided dependencies are not bundled accidentally; and
-- documentation and examples do not encode transient versions as permanent policy.
-
-For pull requests, summarize the behavioral change, important design decisions, verification performed, and any compatibility or migration impact.
+- Prefer a conditional rule ("when changing configuration, ...") over an unconditional instruction that consumes context on unrelated tasks.
+- Prefer positive, executable guidance over long lists of prohibitions.
+- Move workflow-specific detail to the canonical guideline, repository documentation, or scoped local instructions.
+- Remove stale, redundant, or model-specific scaffolding when current agents no longer need it.
+- Do not add a rule unless it changes an agent decision that cannot be reliably inferred from the code, task, or linked documentation.
