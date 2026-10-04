@@ -49,7 +49,7 @@ Choose a scheduler based on the state that the task accesses, not based on where
 
 | Platform state the task accesses | Scheduler |
 | --- | --- |
-| A specific entity or player | Entity scheduler |
+| Region-owned state of a specific entity or player | Entity scheduler |
 | Blocks, chunks, or location-bound world state | Region scheduler |
 | State explicitly documented as owned by the global region | Global region scheduler |
 | Blocking I/O or work independent of server tick state | Async scheduler |
@@ -63,6 +63,16 @@ This includes delayed or deferred work that later reads or modifies an entity. A
 Scheduling can fail immediately when the entity scheduler is already retired: `execute` can return `false`, and scheduling methods can return `null`. Handle that case separately from the retired callback.
 
 Use the retired callback when an accepted task needs explicit handling after the entity is removed. Keep retired callbacks small; they run during critical retirement handling and SHOULD NOT perform operations such as entity removal, chunk or world loading, or ticket-level changes.
+
+#### Outbound-only player operations
+
+Not every API call on a `Player` accesses region-owned player state. An operation MAY run asynchronously when it does not read or mutate region-owned entity, player, world, or chunk state and only performs an operation that is known to be safe off-thread.
+
+A common example is sending an already-constructed Adventure message to a player, where the operation only enqueues outbound client communication. Such delivery does not need to be moved onto the entity scheduler merely because the recipient is represented by a `Player` object.
+
+This exception applies to the operation itself, not to arbitrary work performed while preparing it. For example, asynchronous code may send a message whose component is already available, but it MUST NOT read a player's location, inventory, nearby entities, or other region-owned state asynchronously merely to construct that message.
+
+Do not generalize this exception to the `Player` API as a whole. If an operation reads or mutates server-side player/entity state, can trigger region-owned behavior, or has unclear thread-safety, use the entity scheduler unless the platform contract explicitly allows asynchronous use.
 
 ### Region scheduler
 
@@ -88,7 +98,7 @@ Do not treat the global region scheduler as Folia's equivalent of a universal ma
 
 Use the async scheduler for work that does not require ownership of server tick state, such as database access, HTTP requests, and other blocking I/O.
 
-Code running asynchronously MUST NOT read or mutate region-owned Bukkit/Paper state unless the API explicitly documents that operation as thread-safe.
+Code running asynchronously MUST NOT read or mutate region-owned Bukkit/Paper state unless the API explicitly documents that operation as thread-safe. Outbound-only operations that do not access region-owned state, such as sending an already-constructed player message through an API known to be safe off-thread, are permitted without an entity or region handoff.
 
 The platform async scheduler is appropriate for ordinary off-thread work. A plugin MAY own a dedicated executor when it needs isolation, bounded concurrency, or a lifecycle that the platform scheduler does not provide. Such an executor must be shut down by its owner.
 
@@ -206,8 +216,8 @@ Before merging scheduling or threading changes, verify that:
 - Paper-only or Paper/Folia code uses Paper scheduling APIs directly unless another platform boundary requires abstraction.
 - Shared Paper/Velocity logic keeps platform scheduling behind a common boundary.
 - Every deferred server-state operation has an identifiable entity, region, or global owner.
-- Entity work uses the entity scheduler rather than a captured location.
-- Async work does not access unsafe Bukkit/Paper state.
+- Work that reads or mutates region-owned entity/player state uses the entity scheduler rather than a captured location.
+- Async work does not access unsafe Bukkit/Paper state; outbound-only player operations are treated as exceptions only when they do not access region-owned state and are known to be safe off-thread.
 - Data crossing an async or region boundary is immutable or explicitly thread-safe.
 - No tick-owning task waits synchronously for I/O or another scheduler.
 - Shared mutable state has a documented concurrency strategy.
