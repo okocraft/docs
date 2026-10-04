@@ -14,13 +14,11 @@ Shared technical documentation and development guidelines for OKOCRAFT projects.
 | Message writing | [Message Formatting Guidelines](dev/guidelines/message-formatting.md) | User-facing wording, message keys, MiniMessage, placeholders, English, and Japanese |
 | Message implementation | [Java Message Definitions and Localization](dev/guidelines/java-messages.md) | Java message declarations, `mcmsgdef`, translations, runtime language files, and Adventure registration |
 
-## Contributing
+## Shared Agent Instructions
 
-Read [AGENTS.md](AGENTS.md) before adding or changing shared guidance.
+[AGENTS.md](AGENTS.md) provides the organization-wide baseline instructions for coding agents working across OKOCRAFT repositories. It summarizes the development guidelines above in a reusable form and is intended to be referenced or adopted by individual repositories.
 
-The guidelines generally define defaults for new code and code being materially changed. Existing working implementations do not need to be migrated solely for stylistic consistency.
-
-Shared policy should remain stable over time: avoid turning current dependency or Java versions into organization rules unless the version itself is intentionally part of the policy. When guidance depends on external platform behavior, verify it against current upstream documentation or source.
+Repository-specific instructions may add stricter or more detailed rules for local architecture, build, platform, or release requirements. The documents in this repository remain the canonical detailed guidance.
 
 ## License
 
