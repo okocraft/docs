@@ -16,7 +16,7 @@ Shared technical documentation and development guidelines for OKOCRAFT projects.
 
 ## Shared Agent Instructions
 
-[AGENTS.md](AGENTS.md) provides the organization-wide baseline instructions for coding agents working across OKOCRAFT repositories. It summarizes the development guidelines above in a reusable form and is intended to be referenced or adopted by individual repositories.
+[AGENTS.md](AGENTS.md) provides the organization-wide baseline instructions for coding agents working across OKOCRAFT repositories. It is intentionally concise: it routes agents to the relevant canonical guideline, defines only cross-cutting invariants, and is intended to be referenced or adopted by individual repositories.
 
 Repository-specific instructions may add stricter or more detailed rules for local architecture, build, platform, or release requirements. The documents in this repository remain the canonical detailed guidance.
 
