@@ -1,10 +1,10 @@
 # Java Message Definitions and Localization
 
-This document defines the standard Java message architecture for OKOCRAFT projects.
+This document defines the standard Java architecture for localized user-facing messages in OKOCRAFT projects.
 
-It covers message declaration in code, named arguments, loading localized `.properties` files, Adventure translation registration, and the recommended use of [Siroshun09/mcmsgdef](https://github.com/Siroshun09/mcmsgdef).
+It covers message declaration, typed named arguments, bundled translations, runtime language files, and Adventure translation registration using [Siroshun09/mcmsgdef](https://github.com/Siroshun09/mcmsgdef).
 
-For wording, MiniMessage style, placeholder naming, and Japanese-specific rules, see [Message Formatting Guidelines](message-formatting.md).
+For wording, formatting, placeholder naming, and Japanese writing rules, see [Message Formatting Guidelines](message-formatting.md).
 
 ## 1. Requirement Language
 
@@ -14,40 +14,54 @@ The key words **MUST**, **SHOULD**, and **MAY** indicate requirement strength:
 - **SHOULD**: Expected unless there is a specific, documented reason not to follow it.
 - **MAY**: Optional; use when appropriate.
 
-## 2. Standard Architecture
+## 2. Standard Model
 
-New Java projects SHOULD use this model:
+New Java message systems SHOULD use the following model:
 
-1. declare message keys and their English defaults in Java;
-2. represent dynamic values with named Adventure MiniMessage arguments;
-3. provide Japanese defaults in a bundled `ja.properties` file;
-4. load user-editable locale files from the plugin data directory;
-5. add missing keys without overwriting existing user values;
-6. register the resulting translations with Adventure's `GlobalTranslator`; and
-7. send `MessageKey` or applied typed message keys directly as Adventure components.
+1. declare message keys and English defaults in Java with `DefaultMessageDefiner`;
+2. represent dynamic values as named MiniMessage translation arguments;
+3. ship Japanese defaults as `languages/ja.properties`;
+4. load user-editable files from the plugin data directory;
+5. append missing defaults without overwriting existing values;
+6. register one translation source with Adventure; and
+7. send declared `MessageKey` values or typed `MessageKey.ArgN` results from application code.
 
-English and Japanese MUST be the default locales for new OKOCRAFT message systems.
+English and Japanese MUST be the default supported locales. English MUST be the primary fallback locale.
 
-The intended ownership is:
+The ownership model is:
 
-| Source | Purpose |
+| Source | Responsibility |
 | --- | --- |
-| Java message declarations | Message keys, English defaults, argument types |
-| Bundled `ja.properties` | Japanese default translations |
-| Runtime `languages/*.properties` | User-editable translations |
-| `GlobalTranslator` | Runtime locale resolution and rendering |
+| Java message declarations | Keys, English defaults, Java argument types |
+| Bundled `languages/ja.properties` | Japanese defaults |
+| Runtime `languages/*.properties` | Administrator-editable translations |
+| Adventure translation source | Locale selection and rendering |
 
-Do not maintain the same English default independently in both Java and a bundled English resource file. Keep one source of truth.
+Do not maintain the same English default independently in both Java and a bundled English file. Keep one source of truth.
 
-## 3. Dependency
+## 3. Keep User-facing Text out of Application Logic
+
+Localizable user-facing text MUST be declared in the message layer rather than written inline in commands, listeners, services, or GUI handlers.
+
+~~~java
+// Preferred
+sender.sendMessage(Messages.PLAYER_NOT_FOUND.apply(playerName));
+
+// Avoid
+sender.sendMessage(Component.text("Player " + playerName + " was not found."));
+~~~
+
+This rule applies to text shown to players and other localized audiences.
+
+It does not require internal logs, exception messages, metrics, or developer diagnostics to use the localization system unless they are also user-facing.
+
+## 4. Dependency Management
 
 Use `dev.siroshun.mcmsgdef:mcmsgdef` through the project's version catalog.
 
-At the time this guideline was written, current OKOCRAFT projects use `mcmsgdef 1.3.0`.
-
 ~~~toml
 [versions]
-mcmsgdef = "1.3.0"
+mcmsgdef = "<approved-version>"
 
 [libraries]
 mcmsgdef = { module = "dev.siroshun.mcmsgdef:mcmsgdef", version.ref = "mcmsgdef" }
@@ -59,18 +73,17 @@ dependencies {
 }
 ~~~
 
-Keep the version in the version catalog rather than declaring independent versions in individual modules.
+Do not copy a version number from this guideline. Use the version approved by the project and keep it managed with the rest of the dependency catalog.
 
-`mcmsgdef` requires Java 21+ and Adventure with MiniMessage translation support.
+## 5. Declare Messages in Java
 
-## 4. Declare Messages with `DefaultMessageDefiner`
-
-Create one `DefaultMessageDefiner` for a cohesive message set.
+Use `DefaultMessageDefiner` to declare a key together with its English default.
 
 ~~~java
 public final class Messages {
 
-    private static final DefaultMessageDefiner DEFINER = DefaultMessageDefiner.create();
+    private static final DefaultMessageDefiner DEFINER =
+        DefaultMessageDefiner.create();
 
     public static final MessageKey RELOAD_SUCCESS = DEFINER.define(
         "example.command.reload.success",
@@ -83,20 +96,22 @@ public final class Messages {
 }
 ~~~
 
-`DefaultMessageDefiner#define` does two things:
+`DefaultMessageDefiner#define` records the English default and returns the corresponding `MessageKey`.
 
-- records the English default text; and
-- returns a `MessageKey` for use by application code.
+New keys SHOULD be namespaced by project or plugin:
 
-New message keys SHOULD include a project or plugin namespace, such as `example.command...`.
+~~~text
+example.command.reload.success
+example.command.player-not-found
+~~~
 
-This is especially important because Adventure's global translator is shared process-wide.
+This reduces collisions because Adventure's global translator is process-wide.
 
-### 4.1 Expose Default Messages for Loading
+A message class SHOULD own a cohesive domain, such as command messages, restart messages, or GUI messages. Large projects MAY use multiple message classes and definers.
 
-The language loader needs access to the collected English defaults.
+### 5.1 Expose English Defaults to the Loader
 
-For a single message class, expose the collected map as an unmodifiable view:
+Expose the collected defaults without allowing callers to mutate them.
 
 ~~~java
 @Contract(pure = true)
@@ -105,15 +120,13 @@ public static @NotNull @UnmodifiableView Map<String, String> defaultMessages() {
 }
 ~~~
 
-For a multi-module project, each module MAY own its own definer. The language-loading layer can merge the collected maps.
+A multi-module project MAY aggregate multiple default maps at the language-provider boundary.
 
-Message keys MUST be unique across all definers registered into the same translation source.
+Message keys MUST be unique within one registered translation source. Do not rely on map insertion order to resolve accidental duplicate keys.
 
-## 5. Declare Named Arguments
+## 6. Declare Typed Named Arguments
 
-Messages with dynamic values SHOULD use `MessageKey.ArgN` produced by `MessageKey#with`.
-
-Use Adventure MiniMessage translation `Argument` values to bind Java values to named placeholders.
+Messages with dynamic values SHOULD use the typed `MessageKey.ArgN` wrappers returned by `MessageKey#with`.
 
 ~~~java
 private static final Placeholder<String> PLAYER =
@@ -130,11 +143,9 @@ public static final MessageKey.Arg2<String, Integer> GIVE_SUCCESS = DEFINER
     .with(PLAYER, AMOUNT);
 ~~~
 
-The argument functions passed to `with(...)` define the Java parameter order of `apply(...)`.
+The order passed to `with(...)` defines the Java parameter order of `apply(...)`.
 
-The names supplied to `Argument.*` define the placeholders available to localized MiniMessage text.
-
-For example:
+The names passed to `Argument.*` define the placeholders used by localized MiniMessage text.
 
 ~~~properties
 # English
@@ -144,42 +155,31 @@ example.command.give.success=<gray>Gave <aqua><amount></aqua> items to <aqua><pl
 example.command.give.success=<gray>プレイヤー <aqua><player></aqua> に <aqua><amount></aqua>個付与しました。</gray>
 ~~~
 
-The Japanese translation can reorder `<player>` and `<amount>` without changing the Java call site.
+The translation can reorder placeholders without changing the Java call site.
 
-### 5.1 Choose the Appropriate Argument Type
+### 6.1 Select the Argument Representation
 
-Use the narrowest representation that preserves the intended output.
+Use the representation that preserves the intended semantics.
 
-Use `Argument.string` for plain string data:
+| API | Use for |
+| --- | --- |
+| `Argument.string` | Plain text values |
+| `Argument.numeric` | Numeric values |
+| `Argument.component` | Styled, interactive, or independently translatable components |
+
+Examples:
 
 ~~~java
 player -> Argument.string("player", player)
-~~~
-
-Use `Argument.numeric` for numbers that should remain numeric:
-
-~~~java
 amount -> Argument.numeric("amount", amount)
-~~~
-
-Use `Argument.component` when the value already has Adventure structure, such as hover events, nested translations, or styled text:
-
-~~~java
 player -> Argument.component("player", player.name().hoverEvent(player))
 ~~~
 
-~~~java
-biome -> Argument.component(
-    "biome",
-    Component.translatable("biome.minecraft." + biome.value())
-)
-~~~
+Do not flatten a `Component` to a string when its styling, hover event, or nested translation should be preserved.
 
-Do not flatten a component into a string when its styling, events, or translation behavior should be preserved.
+### 6.2 Reuse Placeholders by Meaning
 
-### 5.2 Reuse Placeholders
-
-When multiple messages use the same semantic argument, define a reusable `Placeholder<T>`.
+When several messages use the same named value with the same rendering semantics, define one reusable `Placeholder<T>`.
 
 ~~~java
 private static final Placeholder<String> PLAYER =
@@ -189,41 +189,11 @@ private static final Placeholder<Long> SECONDS =
     seconds -> Argument.numeric("seconds", seconds);
 ~~~
 
-Shared project-level placeholder utilities MAY be used when the same conversion semantics are required across multiple message classes.
-
-Do not reuse a placeholder only because the Java type matches. The placeholder name and rendering semantics must also match.
-
-## 6. Send Messages
-
-`MessageKey` implements `ComponentLike` and renders as an Adventure translatable component.
-
-A message without arguments can be sent directly:
-
-~~~java
-sender.sendMessage(Messages.RELOAD_SUCCESS);
-~~~
-
-For a typed message, call `apply(...)`:
-
-~~~java
-sender.sendMessage(Messages.GIVE_SUCCESS.apply(player.getName(), amount));
-~~~
-
-Application code SHOULD use declared message constants instead of reconstructing translation keys manually.
-
-~~~java
-// Preferred
-sender.sendMessage(Messages.PLAYER_NOT_FOUND.apply(playerName));
-
-// Avoid
-sender.sendMessage(Component.translatable("example.command.player-not-found", Component.text(playerName)));
-~~~
-
-Keeping construction in the message declaration layer gives reviewers one place to verify keys, placeholder names, argument types, and English defaults.
+Do not reuse a placeholder only because the Java type matches. Its name and rendering semantics must also match.
 
 ## 7. Package Japanese Defaults
 
-For a new project, place bundled non-English defaults under a language resource directory:
+For a new project, use this resource layout:
 
 ~~~text
 src/main/resources/
@@ -231,11 +201,11 @@ src/main/resources/
     └── ja.properties
 ~~~
 
-The Japanese file MUST contain the same keys and named placeholders as the English declarations.
+The Japanese resource MUST use the same keys and named placeholders as the English Java declarations.
 
 ~~~properties
 example.command.reload.success=<gray>設定ファイルを再読み込みしました。</gray>
-example.command.give.success=<gray>プレイヤー <aqua><player></aqua> に <aqua><amount></aqua>個付与しました。</gray>
+example.command.player-not-found=<red>プレイヤー <aqua><player></aqua> は見つかりませんでした。</red>
 ~~~
 
 English SHOULD remain in Java declarations rather than being duplicated in `languages/en.properties`.
@@ -244,9 +214,9 @@ Existing projects MAY retain another resource layout when changing it would crea
 
 ## 8. Load Runtime Language Files
 
-Use `DirectorySource.propertiesFiles(...)` to load the plugin's user-editable language directory.
+Runtime language files are administrator-editable configuration. Existing values MUST NOT be overwritten during normal startup or reload.
 
-The standard locale configuration is:
+Use `DirectorySource.propertiesFiles(...)` and configure English and Japanese as baseline locales:
 
 ~~~java
 DirectorySource.propertiesFiles(dataDirectory.resolve("languages"))
@@ -254,18 +224,12 @@ DirectorySource.propertiesFiles(dataDirectory.resolve("languages"))
     .primaryLocale(Locale.ENGLISH);
 ~~~
 
-`defaultLocale(Locale.ENGLISH, Locale.JAPANESE)` ensures both default locale files participate in loading even when they do not yet exist.
+Use `MessageProcessors.appendMissingMessagesToPropertiesFile(...)` to add only missing defaults.
 
-`primaryLocale(Locale.ENGLISH)` configures English as the fallback locale for the resulting Adventure translation store.
-
-### 8.1 Supply Default Messages
-
-Use `MessageProcessors.appendMissingMessagesToPropertiesFile(...)` so missing entries are added without replacing user-customized values.
-
-A typical loader is:
+A typical default-message loader is:
 
 ~~~java
-private @Nullable Map<String, String> loadDefaultMessageMap(
+private @Nullable Map<String, String> loadDefaultMessages(
     @NotNull Locale locale
 ) throws IOException {
     if (locale.equals(Locale.ENGLISH)) {
@@ -280,7 +244,7 @@ private @Nullable Map<String, String> loadDefaultMessageMap(
 }
 ~~~
 
-Then attach it to the directory source:
+Attach it to the source:
 
 ~~~java
 DirectorySource.propertiesFiles(dataDirectory.resolve("languages"))
@@ -288,18 +252,29 @@ DirectorySource.propertiesFiles(dataDirectory.resolve("languages"))
     .primaryLocale(Locale.ENGLISH)
     .messageProcessor(
         MessageProcessors.appendMissingMessagesToPropertiesFile(
-            this::loadDefaultMessageMap
+            this::loadDefaultMessages
         )
     );
 ~~~
 
-The append-missing processor preserves existing entries and writes only missing defaults.
+With this pattern:
 
-This behavior is important because runtime language files are administrator-editable configuration, not generated files that may be overwritten on every startup.
+- a missing runtime locale file can be created from defaults;
+- a newly added key is appended to an existing runtime file; and
+- an administrator's existing value is preserved.
 
-## 9. Register with Adventure
+`PropertiesFile` reads and writes UTF-8.
 
-For a plugin that loads messages only once, `loadAndRegister(...)` is the shortest form:
+## 9. Register and Replace the Translation Source
+
+Each plugin SHOULD register one stable, uniquely named translation source.
+
+~~~java
+private static final Key LANGUAGE_KEY =
+    Key.key("example", "languages");
+~~~
+
+For a plugin that never reloads messages, `loadAndRegister(...)` is sufficient:
 
 ~~~java
 DirectorySource.propertiesFiles(dataDirectory.resolve("languages"))
@@ -307,54 +282,46 @@ DirectorySource.propertiesFiles(dataDirectory.resolve("languages"))
     .primaryLocale(Locale.ENGLISH)
     .messageProcessor(
         MessageProcessors.appendMissingMessagesToPropertiesFile(
-            this::loadDefaultMessageMap
+            this::loadDefaultMessages
         )
     )
-    .loadAndRegister(Key.key("example", "languages"));
+    .loadAndRegister(LANGUAGE_KEY);
 ~~~
 
-The translation-source key MUST be unique to the plugin.
+### 9.1 Reloadable Plugins
 
-Use a stable key such as:
+A reloadable plugin SHOULD keep a reference to its registered source and replace it explicitly.
 
-~~~java
-Key.key("example", "languages")
-~~~
-
-Do not reuse another plugin's translator key.
-
-## 10. Reloading Messages
-
-A project that supports language reloads SHOULD remove its previous translation source before registering a replacement.
-
-Prefer keeping a reference to the registered source:
+Build the new source first. Only replace the current source after loading succeeds.
 
 ~~~java
-private static final Key LANGUAGE_KEY = Key.key("example", "languages");
-
 private Translator messageSource;
 
 private void loadMessages() throws IOException {
-    if (this.messageSource != null) {
-        GlobalTranslator.translator().removeSource(this.messageSource);
-    }
-
-    var source = DirectorySource.propertiesFiles(
+    Translator nextSource = DirectorySource.propertiesFiles(
             getDataFolder().toPath().resolve("languages")
         )
         .defaultLocale(Locale.ENGLISH, Locale.JAPANESE)
         .primaryLocale(Locale.ENGLISH)
         .messageProcessor(
             MessageProcessors.appendMissingMessagesToPropertiesFile(
-                this::loadDefaultMessageMap
+                this::loadDefaultMessages
             )
         )
         .loadAsMiniMessageTranslationStore(LANGUAGE_KEY);
 
-    GlobalTranslator.translator().addSource(source);
-    this.messageSource = source;
+    var globalTranslator = GlobalTranslator.translator();
+
+    if (this.messageSource != null) {
+        globalTranslator.removeSource(this.messageSource);
+    }
+
+    globalTranslator.addSource(nextSource);
+    this.messageSource = nextSource;
 }
 ~~~
+
+This ordering preserves the current translations if loading the replacement fails.
 
 On plugin disable, remove the registered source when practical:
 
@@ -365,52 +332,48 @@ if (this.messageSource != null) {
 }
 ~~~
 
-Do not leave obsolete translation sources registered after a reload.
+Do not repeatedly register replacement sources without removing the old source.
 
-If an existing project already removes sources by matching `Translator#name()`, it MAY keep that approach, but retaining the exact source reference is easier to reason about.
+## 10. Send Declared Messages
 
-## 11. Multi-module Projects
+`MessageKey` implements `ComponentLike` and renders as an Adventure translatable component.
 
-A multi-module project SHOULD keep message declarations near the code that owns the behavior.
-
-For example:
-
-~~~text
-common/
-  CommandMessages.java
-  RestartMessages.java
-
-paper/
-  PaperCommandMessages.java
-~~~
-
-Each domain can own a `DefaultMessageDefiner`.
-
-The language provider can merge English defaults:
+Send a message without arguments directly:
 
 ~~~java
-private static Map<String, String> mergeDefaults(
-    List<DefaultMessageDefiner> definers
-) {
-    Map<String, String> messages = new LinkedHashMap<>();
-
-    for (DefaultMessageDefiner definer : definers) {
-        messages.putAll(definer.getCollectedMessages());
-    }
-
-    return messages;
-}
+sender.sendMessage(Messages.RELOAD_SUCCESS);
 ~~~
 
-Prefer failing a test or validation step on duplicate keys rather than silently relying on `putAll` ordering when independently maintained modules can collide.
+Apply a typed message before sending it:
 
-The final translator source SHOULD still be unique to the plugin or platform module that registers it.
+~~~java
+sender.sendMessage(
+    Messages.PLAYER_NOT_FOUND.apply(playerName)
+);
+~~~
 
-## 12. Localized Sub-components
+Application code SHOULD use the declared message constant rather than reconstructing a translation key.
 
-A placeholder can itself contain a translatable component.
+~~~java
+// Preferred
+sender.sendMessage(Messages.PLAYER_NOT_FOUND.apply(playerName));
 
-Use this for domain values that need independent localization.
+// Avoid
+sender.sendMessage(
+    Component.translatable(
+        "example.command.player-not-found",
+        Component.text(playerName)
+    )
+);
+~~~
+
+The declaration layer should be the place where reviewers verify the key, English default, placeholder names, and Java argument types.
+
+## 11. Localized Values and Composite Messages
+
+A dynamic value MAY itself be a translatable component.
+
+Use `Argument.component` for domain values whose display name depends on locale.
 
 ~~~java
 private static final Placeholder<Axis> AXIS =
@@ -422,51 +385,82 @@ private static final Placeholder<Axis> AXIS =
     );
 ~~~
 
-This is preferable to converting an enum directly to English text before translation.
+Prefer this to converting a localizable enum or domain value directly to English text.
 
-~~~java
-// Avoid when the value is user-facing and localizable
-axis -> Argument.string("axis", axis.name())
-~~~
+The same approach applies to modes, states, biome names, item labels, and other independently localized concepts.
 
-The same principle applies to biome names, modes, states, item labels, and other domain concepts with their own translation keys.
-
-## 13. Derived and Composite Messages
-
-It is acceptable to compose translated components when a value itself requires localized formatting.
-
-For example, a duration formatter can return a `ComponentLike` built from singular and plural translation keys, then pass that component as a named argument:
+Composite values MAY be built from translation keys when grammar depends on locale. For example, a duration formatter can select singular or plural translation keys and pass the resulting component as one named argument.
 
 ~~~java
 private static final Placeholder<Long> REMAINING_TIME =
-    seconds -> Argument.component("remaining_time", formatTime(seconds));
+    seconds -> Argument.component(
+        "remaining_time",
+        formatTime(seconds)
+    );
 ~~~
 
-Keep grammar decisions in the localized message layer rather than concatenating English fragments around raw values.
+Keep localized grammar in localized components rather than concatenating English fragments in application code.
 
-When a concept has language-dependent singular or plural forms, define separate keys or use another explicit localization mechanism.
+## 12. Multi-module Projects
 
-## 14. Properties File Behavior
+Keep message declarations close to the module or domain that owns the behavior.
 
-`mcmsgdef`'s `PropertiesFile` reads and writes UTF-8.
+~~~text
+common/
+  CommandMessages.java
+  RestartMessages.java
 
-The default directory loader returns an empty map when a locale file does not exist.
+paper/
+  PaperCommandMessages.java
+~~~
 
-The append-missing processor can therefore create a missing locale file and append its defaults on first load.
+The platform entry point MAY aggregate multiple English default maps before loading the translation source.
 
-Do not assume runtime language files are immutable resources. Administrators may edit them.
+When aggregating independently maintained message sets, duplicate keys SHOULD be detected rather than silently overwritten.
 
-When adding a new message key:
+The final registered source key MUST still be unique to the plugin.
 
-- add the English default in Java;
-- add the Japanese default resource entry; and
-- let the append-missing processor add the new key to existing runtime locale files.
+## 13. Validation and Tests
 
-Do not overwrite the entire runtime file only to add new defaults.
+Message infrastructure SHOULD be tested at the behavior it guarantees.
 
-## 15. Recommended Example
+Useful tests include:
 
-A minimal message declaration:
+- English defaults and bundled Japanese defaults contain the expected keys;
+- loading adds missing defaults;
+- loading preserves an existing customized value;
+- a missing baseline locale file is created from defaults; and
+- reload replaces the previous translation source without leaving duplicate sources.
+
+Do not add a test for every sentence solely to mirror resource contents. Test the localization contract and behavior that can regress.
+
+Follow [Testing Guidelines](java-testing.md) for general test structure.
+
+## 14. Legacy Systems and Migration
+
+Existing OKOCRAFT projects use several generations of message infrastructure.
+
+Do not migrate a stable project only to make it structurally identical to this guide.
+
+When adding messages to an existing system:
+
+- preserve its parser and file contract;
+- preserve administrator-edited runtime files;
+- avoid mixing incompatible placeholder syntaxes; and
+- adopt this architecture when a deliberate message-system migration is already in scope.
+
+A migration to `mcmsgdef` SHOULD be a dedicated change that verifies:
+
+- existing key compatibility;
+- English and Japanese coverage;
+- placeholder semantics;
+- runtime file preservation;
+- translator registration and reload behavior; and
+- user-facing output after the migration.
+
+## 15. Reference Implementation
+
+A minimal declaration:
 
 ~~~java
 public final class Messages {
@@ -506,39 +500,6 @@ example.command.reload.success=<gray>設定ファイルを再読み込みしま�
 example.command.player-not-found=<red>プレイヤー <aqua><player></aqua> は見つかりませんでした。</red>
 ~~~
 
-Runtime loading:
-
-~~~java
-private static final Key LANGUAGE_KEY =
-    Key.key("example", "languages");
-
-private void loadMessages() throws IOException {
-    DirectorySource.propertiesFiles(
-            getDataFolder().toPath().resolve("languages")
-        )
-        .defaultLocale(Locale.ENGLISH, Locale.JAPANESE)
-        .primaryLocale(Locale.ENGLISH)
-        .messageProcessor(
-            MessageProcessors.appendMissingMessagesToPropertiesFile(
-                locale -> {
-                    if (locale.equals(Locale.ENGLISH)) {
-                        return Messages.defaultMessages();
-                    }
-
-                    try (InputStream input = getResource(
-                        "languages/" + locale + ".properties"
-                    )) {
-                        return input != null
-                            ? PropertiesFile.load(input)
-                            : null;
-                    }
-                }
-            )
-        )
-        .loadAndRegister(LANGUAGE_KEY);
-}
-~~~
-
 Usage:
 
 ~~~java
@@ -546,43 +507,22 @@ sender.sendMessage(Messages.RELOAD_SUCCESS);
 sender.sendMessage(Messages.PLAYER_NOT_FOUND.apply(playerName));
 ~~~
 
-For a reloadable plugin, use the source-retention pattern from [Reloading Messages](#10-reloading-messages) instead of repeatedly calling `loadAndRegister`.
+Use the loader and lifecycle patterns from sections 8 and 9 rather than duplicating them in each message class.
 
-## 16. Legacy and Migration
-
-Existing OKOCRAFT projects use several generations of message infrastructure.
-
-Do not migrate a stable project only to make it look identical to this document.
-
-When adding a new message to an existing system:
-
-- follow that system's parser contract;
-- preserve existing runtime language files;
-- avoid mixing incompatible placeholder syntaxes; and
-- use the standard architecture when a deliberate message-system migration is already in scope.
-
-A migration to `mcmsgdef` SHOULD be a dedicated change with explicit verification of:
-
-- existing message keys;
-- English and Japanese parity;
-- placeholder semantics;
-- runtime file preservation;
-- reload behavior; and
-- translator registration and removal.
-
-## 17. Review Checklist
+## 16. Review Checklist
 
 Before merging a Java message change, verify that:
 
-- the English default is declared in code;
+- localizable user-facing text is declared in the message layer;
+- the English default is declared in Java;
 - the Japanese default exists;
-- the key follows the project's namespace;
-- all localized variants use the same named placeholder set;
-- `Argument.string`, `Argument.numeric`, or `Argument.component` matches the value semantics;
-- application code uses the declared `MessageKey` rather than a raw translation-key string;
-- English and Japanese are configured as default locales;
+- the key is namespaced and stable;
+- localized variants use the same named placeholders;
+- the selected `Argument.*` representation preserves the value semantics;
+- application code uses declared message constants;
+- English and Japanese are configured as baseline locales;
 - English is the primary locale;
-- missing defaults are appended without overwriting customized runtime values;
+- missing defaults are appended without overwriting runtime customizations;
 - the translation-source key is unique;
-- reloadable plugins remove the previous translation source; and
+- reloadable plugins replace rather than accumulate sources; and
 - message text follows [Message Formatting Guidelines](message-formatting.md).
