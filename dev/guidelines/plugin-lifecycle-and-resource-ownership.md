@@ -6,6 +6,8 @@ The central rule is simple: **the component that starts, registers, or acquires 
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe requirement levels in this document.
 
+These guidelines define defaults for new code and code being materially changed. Existing working implementations do not need to be migrated solely for stylistic consistency. Migration is appropriate when it addresses a concrete correctness, compatibility, security, or maintainability problem.
+
 ## 1. Lifecycle responsibilities
 
 Keep each platform lifecycle phase focused on work that belongs to that phase.
@@ -17,13 +19,15 @@ For Paper plugins:
 - `onEnable` SHOULD create runtime services, register ordinary runtime listeners, connect optional integrations, and start tasks needed for normal operation;
 - `onDisable` SHOULD stop owned runtime activity and release resources that can outlive the plugin's enabled state.
 
-Do not start background work in a constructor unless the platform or framework explicitly requires constructor-time initialization. Constructors SHOULD establish object invariants, not activate the plugin.
+A `JavaPlugin` constructor MUST NOT perform platform-dependent initialization or acquire runtime resources. Paper does not guarantee which platform APIs are available while the plugin constructor runs. Restrict plugin constructors and field initialization to side-effect-free object setup; use bootstrap or lifecycle APIs, `onLoad`, or `onEnable` according to the relevant platform contract.
+
+Platform-neutral helper classes MAY acquire resources in constructors when their ownership and rollback behavior are explicit; this restriction is specifically about plugin entry-point initialization.
 
 For Velocity and other platforms, apply the same ownership model to their corresponding initialization and shutdown events rather than copying Paper lifecycle method names into common code.
 
 ## 2. Resource ownership
 
-Every long-lived resource SHOULD have an identifiable owner.
+Every long-lived resource MUST have an identifiable owner responsible for its retirement. The owner MAY be the platform when its lifecycle contract guarantees cleanup; otherwise the component that acquires or registers the resource owns it unless ownership is explicitly transferred.
 
 Examples include:
 
@@ -99,11 +103,9 @@ Do not start new asynchronous cleanup that can outlive plugin disable unless the
 
 ## 6. Scheduled tasks
 
-A feature that creates a repeating or delayed task SHOULD own its task handle when explicit cancellation may be required.
+A task MUST be cancelled or otherwise made unable to affect obsolete state when the feature or runtime state it belongs to is disabled, replaced, or reconfigured. Retain a task handle when cancellation is the retirement mechanism.
 
-Tasks MUST be retired when the feature they serve is disabled, replaced, or reconfigured.
-
-Task callbacks SHOULD tolerate the target object disappearing before execution. This is especially important for entity-owned and delayed Folia tasks.
+Work that can still complete after replacement MUST verify that its target state is still current before applying results. Task callbacks SHOULD also tolerate the target object disappearing before execution, especially for entity-owned and delayed Folia tasks.
 
 Plugin-wide cancellation provided by a platform can be a useful final safety net, but it SHOULD NOT replace feature-level ownership when tasks are also replaced during reload or feature reconfiguration.
 
@@ -127,7 +129,7 @@ Examples include translation registries, third-party APIs, static registries, se
 
 When the registration API returns a handle, store and close/unregister that handle. When it requires the original listener or source instance, retain that instance for cleanup.
 
-Paper lifecycle registrations SHOULD use the lifecycle API when the registration is designed to be reapplied by Paper during a server lifecycle event. Do not manually duplicate lifecycle-managed registration on each reload.
+Paper lifecycle registrations SHOULD use the lifecycle API when the registration is designed to be reapplied by Paper during a server lifecycle event. Register a lifecycle handler once for a given plugin lifecycle. Paper invokes lifecycle-managed command registration again when its registration lifecycle requires it. A plugin configuration reload MUST NOT register a duplicate lifecycle handler merely to re-register the same commands.
 
 Platform-managed listener registration MAY rely on platform cleanup at plugin disable when the platform contract guarantees it, but explicit feature-level unregistering is still appropriate when a listener must be removed before plugin disable or during reload.
 
@@ -151,10 +153,10 @@ When configuration changes require a service to be replaced:
 
 1. validate the new configuration;
 2. prepare the replacement service when safe;
-3. switch new work to the replacement;
+3. switch new work to the replacement at the commit point;
 4. retire the previous service.
 
-If replacement preparation fails, keep the previous working service when possible.
+Before the commit point, replacement failure MUST leave the previous service in use and newly prepared resources must be retired. After the commit point, a failure while retiring the previous service is a cleanup failure and does not by itself roll back the replacement.
 
 Do not register a second repeating task, listener, or external hook without retiring the first one unless duplicate registration is an intentional part of the feature.
 
@@ -210,14 +212,14 @@ A test should assert externally relevant lifecycle behavior, not only that priva
 
 Before merging lifecycle-related changes, verify that:
 
-- every long-lived resource has a clear owner;
+- every long-lived resource has a clear owner responsible for retirement, including platform ownership where guaranteed by contract;
 - resource acquisition has a corresponding retirement operation;
-- constructors do not unexpectedly start runtime work;
+- `JavaPlugin` constructors do not perform platform-dependent initialization or acquire runtime resources;
 - Paper lifecycle-managed registrations use the lifecycle API rather than ad hoc reload registration;
 - required initialization fails closed rather than leaving partial runtime state active;
 - partial initialization cleans up resources already acquired;
 - shutdown stops producers before closing resources they depend on;
-- repeating and delayed tasks are cancelled when their feature ends;
+- tasks are cancelled or otherwise made unable to affect obsolete state when their feature or runtime state ends;
 - plugin-owned executors and clients are closed with bounded shutdown behavior;
 - external and static registrations are explicitly removed when required;
 - reload replaces resources instead of layering duplicate registrations or tasks;
