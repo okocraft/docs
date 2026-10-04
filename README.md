@@ -1,6 +1,6 @@
 # docs
 
-A repository of documentations for OKOCRAFT.
+A repository of documentation for OKOCRAFT.
 
 ## License
 
