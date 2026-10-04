@@ -6,6 +6,8 @@ The primary goal is correctness under Folia's regionized threading model without
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe requirement levels in this document.
 
+These guidelines define defaults for new code and code being materially changed. Existing working implementations do not need to be migrated solely for stylistic consistency. Migration is appropriate when it addresses a concrete correctness, compatibility, security, or maintainability problem.
+
 ## 1. Platform boundary
 
 ### Paper-only and Paper/Folia plugins
@@ -45,11 +47,11 @@ Do not add this abstraction to a Paper-only project preemptively.
 
 Choose a scheduler based on the state that the task accesses, not based on where the calling code happens to be running.
 
-| Task owns or accesses | Scheduler |
+| Platform state the task accesses | Scheduler |
 | --- | --- |
 | A specific entity or player | Entity scheduler |
 | Blocks, chunks, or location-bound world state | Region scheduler |
-| Global server state not owned by a region | Global region scheduler |
+| State explicitly documented as owned by the global region | Global region scheduler |
 | Blocking I/O or work independent of server tick state | Async scheduler |
 
 ### Entity scheduler
@@ -58,7 +60,9 @@ Use `entity.getScheduler()` for operations whose ownership follows an entity.
 
 This includes delayed or deferred work that later reads or modifies an entity. An entity can move between regions between scheduling and execution, so a location captured earlier is not a substitute for the entity scheduler.
 
-Use the retired callback when the operation needs explicit handling for an entity that is removed before execution.
+Scheduling can fail immediately when the entity scheduler is already retired: `execute` can return `false`, and scheduling methods can return `null`. Handle that case separately from the retired callback.
+
+Use the retired callback when an accepted task needs explicit handling after the entity is removed. Keep retired callbacks small; they run during critical retirement handling and SHOULD NOT perform operations such as entity removal, chunk or world loading, or ticket-level changes.
 
 ### Region scheduler
 
@@ -74,7 +78,9 @@ Do not use the region scheduler for entity-owned operations merely because the e
 
 ### Global region scheduler
 
-Use the global region scheduler only for work that is not owned by a specific region or entity.
+Use the global region scheduler only for state that the platform ownership contract explicitly assigns to the global region.
+
+Server-wide or singleton state is not automatically global-region-owned. Running work on the global scheduler does not make otherwise region-owned or unsupported platform access safe.
 
 Do not treat the global region scheduler as Folia's equivalent of a universal main thread. Running on the global region does not grant access to arbitrary region-owned state.
 
@@ -145,11 +151,9 @@ CPU-heavy work SHOULD use bounded concurrency so it cannot consume the server's 
 
 ## 7. Task lifetime and cancellation
 
-Keep a task handle when the task has a lifetime shorter than the plugin or when explicit cancellation is part of the feature lifecycle.
+A task MUST be cancelled or otherwise made unable to affect obsolete state when the feature or runtime state it belongs to is disabled, replaced, or reconfigured. Retain a task handle when cancellation is the retirement mechanism.
 
-Repeating and delayed tasks SHOULD be cancelled when their owning feature is disabled, replaced, or reconfigured.
-
-A task that can outlive the object that created it SHOULD verify that the target state is still valid before applying a result.
+Work that can still complete after replacement MUST verify that its target state is still current before applying results.
 
 Cancellation SHOULD be idempotent. Cleanup code SHOULD tolerate a task that has already completed or already been cancelled.
 
@@ -207,7 +211,7 @@ Before merging scheduling or threading changes, verify that:
 - Data crossing an async or region boundary is immutable or explicitly thread-safe.
 - No tick-owning task waits synchronously for I/O or another scheduler.
 - Shared mutable state has a documented concurrency strategy.
-- Long-lived tasks are cancelled or otherwise retired with their owning feature.
+- Tasks are cancelled or otherwise made unable to affect obsolete state when their owning feature or runtime state ends.
 - `folia-supported: true` is backed by actual Folia-safe behavior.
 
 ## References
