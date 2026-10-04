@@ -6,15 +6,15 @@ For Paper plugins, Configurate is the standard configuration library. Paper prov
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe requirement levels in this document.
 
+These guidelines define defaults for new code and code being materially changed. Existing working implementations do not need to be migrated solely for stylistic consistency. Migration is appropriate when it addresses a concrete correctness, compatibility, security, or maintainability problem.
+
 ## 1. Configuration library
 
 Paper-side code SHOULD use Configurate for structured configuration.
 
-A Paper plugin MUST NOT shade or bundle a separate Configurate implementation solely for its Paper runtime.
+A Paper plugin artifact MUST NOT shade or bundle its own Configurate runtime. If shared code also targets a platform that does not provide Configurate, package or otherwise supply Configurate only for that platform's runtime; do not include the additional runtime in the Paper artifact.
 
-Builds MAY declare Configurate as `compileOnly` when a module needs an explicit compile-time dependency. That declaration must not cause another Configurate copy to be packaged into the Paper plugin.
-
-A shared module used by Paper and another platform MAY declare Configurate explicitly when that module needs Configurate on its compile classpath. Packaging decisions for that module MUST respect the runtime contract of each target platform.
+Paper provides the runtime, but a module that imports Configurate must still have Configurate on its compile classpath unless shared build logic already supplies it. Use a compile-time-only dependency such as `compileOnly`, or `compileOnlyApi` when Configurate types are intentionally part of the module's public compile API. The Paper artifact MUST NOT package that dependency.
 
 Do not mix Bukkit `FileConfiguration`, Configurate, and custom YAML parsers in one new configuration system without a concrete interoperability requirement.
 
@@ -92,9 +92,9 @@ Use a prepare-then-publish sequence:
 5. Publish the new configuration as one logical change.
 6. Retire resources that belonged only to the previous configuration.
 
-If steps 1 through 4 fail, the currently active configuration MUST remain active.
+Before the publication/commit point, a reload failure MUST leave the previously active runtime state in service, and any newly prepared resources MUST be retired.
 
-A failed reload MUST NOT leave the plugin in a mixture of old and new settings.
+A reload MUST NOT intentionally publish a partially prepared runtime state. Publication SHOULD replace a coherent runtime-state snapshot in one logical step where practical.
 
 ```java
 PluginConfig next = loader.load(path);
@@ -105,7 +105,7 @@ RuntimeState previous = current.getAndSet(prepared);
 previous.close();
 ```
 
-The exact implementation may differ, but the observable behavior should remain transactional.
+The exact implementation may differ, but the prepare/commit boundary must remain clear. Failures while retiring the previous state after publication are cleanup failures; they do not by themselves roll back the published state. Report or aggregate those failures and continue retiring independent resources. Do not claim rollback after publication or external side effects unless the implementation actually provides it.
 
 ## 7. Publishing configuration safely
 
@@ -121,18 +121,9 @@ A feature that needs derived values SHOULD preferably receive an immutable deriv
 
 Some settings control resources with their own lifecycle, such as scheduled tasks, database pools, caches, listeners, or external integrations.
 
-Reload code SHOULD make ownership explicit.
+Resources required by the next configuration SHOULD be prepared before the commit point when the resource contract permits it. If preparation fails, retire newly prepared resources and keep the previous runtime state active. After publication, retire resources that belong only to the previous state; failures during retirement are cleanup failures rather than implicit rollback.
 
-When replacing a resource:
-
-1. validate the new settings;
-2. create the replacement when safe to do so;
-3. publish the replacement;
-4. close or cancel the previous resource.
-
-If creating the replacement fails, keep the previous working resource when possible.
-
-Do not close the working resource first unless the platform or resource contract makes parallel preparation impossible. If downtime is unavoidable, document that behavior and handle rollback explicitly.
+Do not close a working exclusive resource before validation and preparation unless its contract makes overlap impossible. If a replacement requires downtime or destructive side effects before commit, document the weaker rollback guarantee explicitly.
 
 ## 9. File I/O and scheduler context
 
@@ -213,7 +204,7 @@ Before merging configuration changes, verify that:
 - Domain validation happens before the configuration becomes active.
 - Required startup configuration fails closed when invalid.
 - Reload prepares and validates new state before publishing it.
-- A failed reload leaves the previous working configuration active whenever possible.
+- Failures before the reload commit point leave the previous runtime state active and retire newly prepared resources.
 - Active configuration is immutable or has an explicit concurrency model.
 - Runtime file I/O does not block a Folia tick-owning scheduler unnecessarily.
 - Resource replacement has explicit ownership and cleanup.
