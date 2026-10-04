@@ -6,11 +6,13 @@ The goal is to keep repositories predictable and maintainable while centralizing
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe requirement levels in this document.
 
+These guidelines define defaults for new code and code being materially changed. Existing working implementations do not need to be migrated solely for stylistic consistency. Migration is appropriate when it addresses a concrete correctness, compatibility, security, or maintainability problem.
+
 ## 1. Build system
 
-New Java projects SHOULD use Gradle with the Kotlin DSL.
+New Java projects SHOULD use Gradle with the Kotlin DSL. Existing projects using another supported build system, such as Maven, do not need to migrate solely for consistency.
 
-A repository MUST include and use the Gradle Wrapper. Local documentation and CI commands SHOULD invoke `./gradlew` rather than depend on a system-installed Gradle version.
+A repository that uses Gradle MUST include and use the Gradle Wrapper. Gradle documentation and CI SHOULD invoke `./gradlew` rather than depend on a system-installed Gradle version.
 
 Do not hand-edit generated wrapper scripts or the wrapper JAR. Update the wrapper through Gradle and commit the resulting wrapper files together.
 
@@ -36,7 +38,6 @@ plugins {
 }
 
 jcommon {
-    javaVersion = JavaVersion.VERSION_25
     setupJUnit(libs.junit.bom)
     setupMockito(libs.mockito)
 }
@@ -81,7 +82,7 @@ Use `api` only when downstream consumers of the module need the dependency on th
 
 Use `testImplementation` and `testRuntimeOnly` for test-only dependencies.
 
-A dependency supplied by Paper, Velocity, or another runtime MUST NOT be shaded into the plugin merely because doing so makes local dependency resolution convenient.
+A dependency that the target platform contract, or an explicit OKOCRAFT platform policy, defines as provided to plugins MUST NOT be bundled into that platform's plugin artifact merely for dependency-resolution convenience.
 
 Before adding an exclusion or forcing a version, document or make evident the conflict being solved. Avoid broad exclusions that can hide required transitive dependencies.
 
@@ -126,7 +127,7 @@ A test SHOULD describe behavior rather than implementation details so routine re
 
 ## 9. Build verification
 
-`./gradlew build` is the default local verification command unless a repository documents a stricter command.
+For Gradle repositories, `./gradlew build` is the default local verification command unless the repository documents another verification task. Repositories using another build system SHOULD document an equivalent clean-checkout verification command.
 
 A pull request SHOULD be buildable from a clean checkout using only committed build files and declared external repositories.
 
@@ -150,13 +151,13 @@ jobs:
   build:
     uses: okocraft/workflows/.github/workflows/gradle.yml@v1
     with:
-      java-version: '25'
+      java-version: '<project Java version>'
       package-name: Example-Build-${{ github.run_number }}
 ```
 
 Do not copy a reusable workflow into each repository to make a one-off modification. Prefer extending the shared workflow when the behavior is broadly applicable, or add a small repository-local job when it is not.
 
-CI and local builds SHOULD execute the same Gradle tasks for equivalent verification.
+CI and local builds SHOULD execute equivalent verification tasks through the repository's selected build system.
 
 ## 11. Workflow security
 
@@ -203,14 +204,14 @@ Repository-specific development procedures SHOULD be documented near the code th
 
 Before merging build or CI changes, verify that:
 
-- the Gradle Wrapper is present and is the documented way to run the build;
+- for Gradle repositories, the Gradle Wrapper is present and is the documented way to run the build;
 - Java versions in Gradle and CI are aligned;
 - common build behavior uses established OKOCRAFT Gradle plugins where applicable;
 - dependencies and plugin versions are centralized in `libs.versions.toml` when appropriate;
 - dependency scopes match the runtime and public API contract;
 - platform-provided libraries are not bundled accidentally;
 - shared Paper/Velocity projects keep platform dependencies in platform modules;
-- `./gradlew build` succeeds from a clean checkout;
+- the repository's documented verification command succeeds from a clean checkout;
 - GitHub Actions reuse `okocraft/workflows` where applicable;
 - workflow permissions and secrets are narrowly scoped;
 - Renovate extends shared OKOCRAFT presets and local rules are true exceptions;
