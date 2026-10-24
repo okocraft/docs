@@ -13,7 +13,7 @@ Use the harness and helper plugin from [okocraft/public-ops `paper-e2e`](https:/
 
 No Minecraft account and no human client are needed.
 
-Check the versions before starting, because a mismatch fails late and unclearly: `node --version` (24+), `pnpm --version`, and `java --version` (the harness passes `--java`; recent Paper needs Java 25, while the machine's default may be older). If the required runtime is not installed, install it before doing anything else instead of working around it.
+Check the versions before starting, because a mismatch fails late and unclearly: `node --version` (24+), `pnpm --version`, and `java --version` (the harness passes `--java`; recent Paper needs Java 25, while the machine's default may be older). Getting them without root: download a Temurin 25 JDK tarball from <https://adoptium.net/temurin/releases/> (or the Adoptium API) and a Node.js 24 tarball from <https://nodejs.org/dist/latest-v24.x/>, extract both into a work directory, and put their `bin` directories first in `PATH` (and pass `--java <jdk>/bin/java` to the harness). pnpm can be installed with `npm install -g pnpm`. If the required runtime is not installed, install it before doing anything else instead of working around it.
 
 ## 2. Build the environment
 
@@ -89,7 +89,11 @@ Measured on a real run (28 server starts for 9 scenarios, about 20 minutes of se
 - Chunks that are not entity-ticking freeze moving entities (for example a minecart driven toward a boundary). Use `forceload add` for the path.
 - Do not kill the server with `pkill -f paper.jar` from a shell whose own command line contains the same text; use a pattern that cannot match itself, or the harness.
 - A teleport to integer coordinates puts the player at the block center (`tp A 10 64 10` gives `10.5 64 10.5`). Compare positions with that offset, or with a tolerance, or a correct plugin looks like a failure.
+- The test server uses a fixed seed and `generate-structures=false`, so a flat world has no random structures that disturb block-based checks. Keep both when you change `server.properties`.
+- Vanilla keeps changing the world while a scenario runs (random ticks: leaf decay, crop growth, fire spread; mob AI). For a block-state check, first run with `gamerule random_tick_speed 0` so only the plugin can change the blocks, then confirm once with the default value that the plugin still works when the vanilla process runs too. Report both.
 - Operators bypass WorldGuard by default. Use non-operator bots for protection checks and an operator bot as the bypass control.
+- Recommended wait values: poll every 25-50 ms for a condition, with an upper bound of 3 s for a command's answer and 10-30 s for something scheduled by the plugin; keep the 2.5 s settle after joining (chunks, sessions) and about 300 ms after a teleport. Use them as upper bounds only; return as soon as the condition holds.
 - Waits are the main source of flakiness. Wait for an observable condition when you can; use fixed sleeps only for settling (chunks, scheduled tasks).
+- If Gradle resolves from Maven Central only and Central is rate limited or blocked, add `https://repo.papermc.io/repository/maven-public/` (it proxies Central) as an extra repository in an init script (`--init-script`), not in the project, and state the deviation in the report.
 - Some systems resolve Gradle dependencies unreliably through restricted proxies. If Gradle fails with HTTP 429 from Maven Central, retry after a short wait; if it keeps failing, or cannot resolve artifacts that curl can fetch, say so, build with an equivalent tool for verification, and state the deviation in the report.
 - Natural events are hard to reproduce. Plant the conditions (for raids: job-site blocks plus villagers that have claimed them, a bad omen effect, non-peaceful difficulty; the raid omen effect command alone does not start a raid).

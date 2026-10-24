@@ -39,6 +39,7 @@ export default defineScenario({
 - **Assert on observations.** Use `bot.messages` (text and translation key), `bot.packets`, helper output (`env.position`, `env.helper`), and server log lines. Do not assert that a command "ran".
 - **Wait for the answer, not for time.** Prefer `env.sayUntil`, `bot.waitFor` and `server.runUntil` over `sleep`. Use a fixed window only for a negative check, and size it from the plugin's timing, not from habit.
 - **Pair every negative with a control.** For "player A must not receive X", also assert that player B does, in the same run. For "action denied", also assert it succeeds for an allowed actor or outside the protected area.
+- **When the control itself depends on the plugin, build another one.** If the plugin is what makes the positive case happen (for example the effect you want to compare against is the plugin's own), a plain "without the plugin" control is not available. Then use a control that does not need the plugin's logic: a second target that the plugin must treat differently (excluded vs. included), a run with the plugin's feature switched off by configuration, or the same scenario with the vanilla process only (for example random ticks) and the observation window fixed in advance. Say in the report which control you used and why.
 - **Count, do not just detect.** Count deliveries to catch duplicates.
 - **Use fixed, deterministic setups.** Teleport players to known coordinates, spawn entities with fixed names, set difficulty and gamerules, and clear bot buffers (`env.clearAll()`) right before the action.
 - **Reset between actions.** Put players and entities back (or spawn fresh ones) so one step does not change the next step's starting state. Players who die respawn automatically; re-teleport them.
@@ -58,6 +59,9 @@ export default defineScenario({
 | Particles, sounds, chat packets | Declare `recordPackets` for the bot. Through ViaVersion the packet names are `world_particles`, `sound_effect` and `system_chat`. `sound_effect` carries a numeric `soundId`; map it to a name with the registry of the client version (`minecraft-data`), or compare against a control run instead of naming it. |
 | Equipment changes | `e2eequip <player> <slot> <material>` |
 | Teams | console `team add/join/modify` |
+| Another dimension | `env.teleport(name, x, y, z, { world })`, `env.inWorld(world, command)`; `forceload add` the chunks you use |
+| Place or remove blocks | `env.setBlock(...)` / `env.fill(...)`. These console commands, including `destroy` mode, do **not** fire `BlockBreakEvent` or other player events. To exercise a plugin's break handler, let a bot dig (if the protocol allows it without moving), or fire the event from a helper command; if neither is possible, mark the check `UNVERIFIED` instead of testing a different path. |
+| Per-scenario configuration | `files: { "plugins/<Plugin>/config.yml": "..." }` in the scenario (written before the server starts); for another jar, put it into `plugins/` before `run` |
 | Observe an event's final state | `e2elisten <fully.qualified.EventClass>` (logs after all listeners ran) |
 | Vehicles | place a rideable entity, drive it with repeated velocity from a helper or command, and sample the passenger's position |
 
