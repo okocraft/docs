@@ -42,7 +42,7 @@ export default defineScenario({
 - **Check the whole matrix when the plugin has rules.** For allow/deny/unset flags or modes, enumerate the cases (member, non-member, bypass, outside) instead of a single happy path.
 - **Compare with the platform when the plugin reproduces platform behavior.** Run the same scenario without the plugin and compare, instead of relying on remembered expectations.
 - **Test persistence through a graceful restart.** Stop the server, check the file, start again with `fresh: false`, and observe behavior, not only the file.
-- **Test permissions through the real path.** Deny the node with `e2eperm`, then run the command as the bot and assert on the server's answer and on the unchanged behavior.
+- **Test permissions through the real path.** Grant or deny the node with `env.permission(...)` (LuckPerms), then run the command as a non-operator bot and assert on the server's answer and on the unchanged behavior. Check the default, granted, and denied states.
 - **Record the exact observation.** Put the received text, packet name, coordinates, or counts in the evidence string.
 
 ## 4. Useful recipes
