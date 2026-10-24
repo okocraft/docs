@@ -5,7 +5,7 @@ description: Analyze any Minecraft/Paper plugin's source and existing tests to p
 
 # Minecraft / Paper In-Game Test Planning
 
-Use this skill to plan in-game checks for Minecraft, Bukkit, and Paper plugins involving blocks, entities, inventories, worlds, commands, schedulers, persistence, or other game mechanics. It produces test viewpoints, operations, and checklists; it does not execute the game tests. It has two workflows:
+Use this skill to plan in-game checks for Minecraft, Bukkit, and Paper plugins involving blocks, entities, inventories, worlds, commands, schedulers, persistence, or other game mechanics. It produces test viewpoints, operations, and checklists; it does not execute the game tests (use [Minecraft / Paper End-to-End Testing](../minecraft-paper-e2e-testing/SKILL.md) to run planned operations with a real server and bots). It has two workflows:
 
 1. **Persistent planning guidance (Role 1):** create or improve `TESTING.md` in the *target plugin repository*, based on its current implementation.
 2. **Update-specific review (Role 2):** compare a Minecraft/Paper version change against the plugin's dependency points and produce an executable checklist for *this update only*.

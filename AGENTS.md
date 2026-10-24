@@ -25,6 +25,7 @@ Read the detailed guideline only when the task touches that concern:
 | --- | --- |
 | Java project structure, Gradle, dependencies, CI, Renovate | [Java Project, Gradle, and CI](https://github.com/okocraft/docs/blob/main/dev/guidelines/java-project-gradle-and-ci.md) |
 | Test design and scope | [Testing](https://github.com/okocraft/docs/blob/main/dev/guidelines/java-testing.md) |
+| Running E2E tests against a real Paper server, evidence and reporting rules | [Minecraft / Paper End-to-End Testing](https://github.com/okocraft/docs/blob/main/dev/guidelines/minecraft-paper-e2e-testing.md) |
 | Paper/Folia scheduling, threading, async boundaries | [Paper and Folia Scheduling and Threading](https://github.com/okocraft/docs/blob/main/dev/guidelines/paper-folia-scheduling-and-threading.md) |
 | Plugin lifecycle and long-lived resources | [Plugin Lifecycle and Resource Ownership](https://github.com/okocraft/docs/blob/main/dev/guidelines/plugin-lifecycle-and-resource-ownership.md) |
 | Configuration, validation, reload | [Configuration and Reload](https://github.com/okocraft/docs/blob/main/dev/guidelines/configuration-and-reload.md) |

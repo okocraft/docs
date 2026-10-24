@@ -11,6 +11,7 @@ Shared technical documentation and development guidelines for OKOCRAFT projects.
 | Scheduling and threading | [Paper and Folia Scheduling and Threading Guidelines](dev/guidelines/paper-folia-scheduling-and-threading.md) | Paper/Folia scheduler ownership, async boundaries, cross-region work, and Folia safety |
 | Lifecycle | [Plugin Lifecycle and Resource Ownership Guidelines](dev/guidelines/plugin-lifecycle-and-resource-ownership.md) | Plugin lifecycle, resource ownership, cleanup, replacement, and failure handling |
 | Configuration | [Configuration and Reload Guidelines](dev/guidelines/configuration-and-reload.md) | Configurate, typed configuration, validation, publication, reload, and migration |
+| E2E testing | [Minecraft / Paper End-to-End Testing Guidelines](dev/guidelines/minecraft-paper-e2e-testing.md) | When to run E2E tests against a real Paper server, evidence rules, safety rules, protocol client limits, and reporting |
 | Message writing | [Message Formatting Guidelines](dev/guidelines/message-formatting.md) | User-facing wording, message keys, MiniMessage, placeholders, English, and Japanese |
 | Message implementation | [Java Message Definitions and Localization](dev/guidelines/java-messages.md) | Java message declarations, `mcmsgdef`, translations, runtime language files, and Adventure registration |
 
@@ -19,6 +20,7 @@ Shared technical documentation and development guidelines for OKOCRAFT projects.
 | Skill | Purpose |
 | --- | --- |
 | [Minecraft / Paper In-Game Test Planning](dev/skills/minecraft-paper-test-planning/SKILL.md) | Create or maintain a plugin's durable `TESTING.md`, and generate targeted in-game checklists for Minecraft/Paper updates. Includes [TESTING.md](dev/skills/minecraft-paper-test-planning/references/testing-template.md) and [update checklist](dev/skills/minecraft-paper-test-planning/references/update-checklist-template.md) templates. |
+| [Minecraft / Paper End-to-End Testing](dev/skills/minecraft-paper-e2e-testing/SKILL.md) | Run planned in-game operations automatically against a real Paper server with real protocol clients, and report evidence-based PASS/FAIL/UNVERIFIED results. Uses the harness and helper plugin in [okocraft/public-ops `paper-e2e`](https://github.com/okocraft/public-ops/tree/main/paper-e2e). |
 
 ## Shared Agent Instructions
 
