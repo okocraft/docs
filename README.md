@@ -8,6 +8,7 @@ Shared technical documentation and development guidelines for OKOCRAFT projects.
 | --- | --- | --- |
 | Project and build | [Java Project, Gradle, and CI Guidelines](dev/guidelines/java-project-gradle-and-ci.md) | Project structure, build systems, dependencies, CI, shared workflows, and Renovate |
 | Testing | [Testing Guidelines](dev/guidelines/java-testing.md) | Test design, test scope, mocking, platform boundaries, and behavioral verification |
+| Formal verification | [Formal Verification Guidelines](dev/guidelines/formal-verification.md) | Risk-based proof targets, specifications, Java tools, scoped evidence, AI assistance, and CI operation |
 | Scheduling and threading | [Paper and Folia Scheduling and Threading Guidelines](dev/guidelines/paper-folia-scheduling-and-threading.md) | Paper/Folia scheduler ownership, async boundaries, cross-region work, and Folia safety |
 | Lifecycle | [Plugin Lifecycle and Resource Ownership Guidelines](dev/guidelines/plugin-lifecycle-and-resource-ownership.md) | Plugin lifecycle, resource ownership, cleanup, replacement, and failure handling |
 | Configuration | [Configuration and Reload Guidelines](dev/guidelines/configuration-and-reload.md) | Configurate, typed configuration, validation, publication, reload, and migration |
