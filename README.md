@@ -18,7 +18,7 @@ Shared technical documentation and development guidelines for OKOCRAFT projects.
 
 | Skill | Purpose |
 | --- | --- |
-| [Minecraft / Paper In-Game Test Design](dev/skills/minecraft-paper-game-testing/SKILL.md) | Create or maintain a plugin's durable `TESTING.md`, and generate targeted in-game checklists for Minecraft/Paper updates. Includes [TESTING.md](dev/skills/minecraft-paper-game-testing/references/testing-template.md) and [update checklist](dev/skills/minecraft-paper-game-testing/references/update-checklist-template.md) templates. |
+| [Minecraft / Paper In-Game Test Planning](dev/skills/minecraft-paper-test-planning/SKILL.md) | Create or maintain a plugin's durable `TESTING.md`, and generate targeted in-game checklists for Minecraft/Paper updates. Includes [TESTING.md](dev/skills/minecraft-paper-test-planning/references/testing-template.md) and [update checklist](dev/skills/minecraft-paper-test-planning/references/update-checklist-template.md) templates. |
 
 ## Shared Agent Instructions
 
