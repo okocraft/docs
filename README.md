@@ -14,6 +14,12 @@ Shared technical documentation and development guidelines for OKOCRAFT projects.
 | Message writing | [Message Formatting Guidelines](dev/guidelines/message-formatting.md) | User-facing wording, message keys, MiniMessage, placeholders, English, and Japanese |
 | Message implementation | [Java Message Definitions and Localization](dev/guidelines/java-messages.md) | Java message declarations, `mcmsgdef`, translations, runtime language files, and Adventure registration |
 
+## Agent Skills
+
+| Skill | Purpose |
+| --- | --- |
+| [Minecraft / Paper In-Game Test Planning](dev/skills/minecraft-paper-test-planning/SKILL.md) | Create or maintain a plugin's durable `TESTING.md`, and generate targeted in-game checklists for Minecraft/Paper updates. Includes [TESTING.md](dev/skills/minecraft-paper-test-planning/references/testing-template.md) and [update checklist](dev/skills/minecraft-paper-test-planning/references/update-checklist-template.md) templates. |
+
 ## Shared Agent Instructions
 
 [AGENTS.md](AGENTS.md) provides the organization-wide baseline instructions for coding agents working across OKOCRAFT repositories. It is intentionally concise: it routes agents to the relevant canonical guideline, defines only cross-cutting invariants, and is intended to be referenced or adopted by individual repositories.
