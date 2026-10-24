@@ -41,9 +41,17 @@ Prefer, in this order:
 
 1. The plugin's real commands and permissions, run by a bot (an operator bot for admin commands). This also covers command registration and permissions.
 2. Vanilla console commands: `tp`, `kill`, `effect`, `setblock`, `summon`, `gamerule`, `team`, `difficulty`, `data get`, `execute`.
-3. Helper plugin commands: `e2epos` (read position), `e2espawn`/`e2ehealth`/`e2eexists` (entities), `e2eequip`, `e2eperm` (grant or deny a permission node), `e2elisten` (log an event class after all other listeners). They print structured `E2E <TAG> key=value` lines that the harness parses.
+3. Helper plugin commands: `e2epos` (read position), `e2espawn`/`e2ehealth`/`e2eexists` (entities), `e2eequip`, `e2elisten` (log an event class after all other listeners). They print structured `E2E <TAG> key=value` lines that the harness parses.
 
 Observe in this order of strength: what a bot received (messages, packets), then server state read through the helper or `data get`, then log lines. Prefer a bot's received data for anything a player should see.
+
+### Permissions
+
+For checks that depend on permissions, use a real permission plugin: `prepare --plugin luckperms` installs LuckPerms, and scenarios call `env.permission(player, node, "true" | "false" | "unset")` (`lp user <player> permission ...`).
+
+- Do not op the bot under test: operators get Bukkit's `default: op` permissions, which hides missing grants. Use an operator bot only as the "allowed" control.
+- Cover the default state (no grant), an explicit grant, and an explicit denial.
+- Confirm the effect from what the bot receives, and take a control from before the grant, as the permission plugin's own log line only shows that the node was stored.
 
 ## 5. Execution
 
