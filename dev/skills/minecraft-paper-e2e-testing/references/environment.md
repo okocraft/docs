@@ -71,6 +71,18 @@ node src/cli.ts run --dir <server-dir> --minecraft <version> --java <java> <scen
 - Output: `report.md`, `results.json`, and the console log of every scenario in `<out>/logs/<scenario id>.log` (every console line and every command sent). `<server-dir>/e2e-console.log` only holds the last run, because each scenario starts a new log.
 - Exit code is non-zero when a check fails.
 
+### Keeping a run short
+
+Measured on a real run (28 server starts for 9 scenarios, about 20 minutes of server time): about half of the time is boot, bot joining and shutdown, which every fresh server pays, and most of the rest is fixed sleeps. Plan for it:
+
+- Use `--parallel <n>` (at most one worker per CPU core) to run independent scenarios at once. Each still gets a fresh server on its own port. Four sample scenarios took 86 s one after another and 35 s with four workers.
+- The first `run` creates a start-up archive (`<server-dir>/.e2e/app.jsa`); each later start is about 5 s faster. Delete it after changing Java or `paper.jar`.
+- After a fix, re-run only what is needed with `--only <id>`; run the whole set once at the end. Re-runs and exploratory probes were a large share of the measured server time.
+- Explore on one long-lived server (start it once, send commands, read the log) instead of starting a server per question, then write the result down as a scenario.
+- Wait for the condition: `sayUntil`, `helper`, `permission`, `waitFor` and `runUntil` return when the server has answered. A check that something does **not** happen needs a fixed window; keep it as short as the plugin's own timing allows (a cooldown sets the minimum) and give it a control.
+- When a build step fails on a rate limit (Gradle 429), do not wait with fixed sleeps and retry blindly. Fall back to the offline/`mavenLocal` route at once and state the deviation.
+- Run long steps in the background and check a condition (a file, a log line) instead of sleeping for a guessed time.
+
 ## 6. Pitfalls
 
 - Gamerule and command names change between Minecraft versions (recent versions use snake_case such as `spawn_mobs`, `show_death_messages`). Check the server's own messages for `Unknown` errors.

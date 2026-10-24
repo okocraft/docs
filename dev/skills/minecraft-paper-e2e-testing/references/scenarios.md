@@ -37,6 +37,7 @@ export default defineScenario({
 ## 3. Rules for good scenarios
 
 - **Assert on observations.** Use `bot.messages` (text and translation key), `bot.packets`, helper output (`env.position`, `env.helper`), and server log lines. Do not assert that a command "ran".
+- **Wait for the answer, not for time.** Prefer `env.sayUntil`, `bot.waitFor` and `server.runUntil` over `sleep`. Use a fixed window only for a negative check, and size it from the plugin's timing, not from habit.
 - **Pair every negative with a control.** For "player A must not receive X", also assert that player B does, in the same run. For "action denied", also assert it succeeds for an allowed actor or outside the protected area.
 - **Count, do not just detect.** Count deliveries to catch duplicates.
 - **Use fixed, deterministic setups.** Teleport players to known coordinates, spawn entities with fixed names, set difficulty and gamerules, and clear bot buffers (`env.clearAll()`) right before the action.
