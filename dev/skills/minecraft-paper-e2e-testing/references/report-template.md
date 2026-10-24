@@ -45,4 +45,6 @@ Each item with the reason (environment limit, missing client support, Folia, ren
 Is the target releasable? Base it only on what was observed, name the blockers, and name the residual risk from the unverified items.
 ```
 
+The harness `report.md` has the same columns (ID, Result, Check, Executed, Expected, Evidence) when scenarios pass `executed` and `expected`; copy it instead of rebuilding the table by hand.
+
 Language: write the report in the language the user uses. Keep IDs and commands unchanged.

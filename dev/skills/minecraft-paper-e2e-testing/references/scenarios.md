@@ -1,8 +1,10 @@
 # Writing Scenarios
 
-A scenario turns one planned operation (`OP-xxx`) into code that creates the condition, performs the action, and records evidence. The harness provides `defineScenario`, `E2eEnv` (server + bots + helper wrappers) and `Recorder`. See `paper-e2e/harness/examples` for a runnable example.
+A scenario turns one planned operation into code that creates the condition, performs the action, and records evidence. The harness provides `defineScenario`, `E2eEnv` (server + bots + helper wrappers) and `Recorder`. See `paper-e2e/harness/examples` for a runnable example.
 
 ## 1. Mapping from TESTING.md
+
+The planned operations are usually `OP-xxx`, but a repository's `TESTING.md` may use another prefix (for example `BT-xxx` for baseline smoke tests). Use its IDs unchanged in `id` and `covers`, and write down in the report that they correspond to `OP-xxx` here.
 
 | TESTING.md | Scenario |
 | --- | --- |
@@ -30,7 +32,7 @@ export default defineScenario({
 });
 ```
 
-`recorder.check(id, title, ok, evidence, covers)` requires non-empty evidence. Use `recorder.unverified(...)` for anything the scenario cannot establish.
+`recorder.check(id, title, ok, evidence, covers, { executed, expected })` requires non-empty evidence. `executed` and `expected` fill the report's Executed and Expected columns (a dash when omitted); fill them so the report table needs no rewriting. Use `recorder.unverified(...)` for anything the scenario cannot establish.
 
 ## 3. Rules for good scenarios
 
@@ -51,7 +53,8 @@ export default defineScenario({
 | --- | --- |
 | Operator-only setup through real commands | `op <name>` from the console, then the bot sends the command (for WorldEdit/WorldGuard: `//pos1`, `//pos2`, `/rg define`, `/rg flag`) |
 | Kill a player and observe the death message | console `kill <name>`; read `messages` whose `translate` starts with `death.` and the death screen packet (`death_combat_event`) |
-| Entity interaction | `e2espawn`, then `bot.raw.activateEntity(...)` / `bot.raw.attack(...)`; read health with `e2ehealth` |
+| Entity interaction | `e2espawn`, then `bot.useEntity(id, { sneaking })` / `bot.raw.attack(...)`; read health with `e2ehealth`. Do not use `bot.raw.activateEntity`: it always sends `sneaking: false`, so a plugin that reacts to sneak + click looks like it does nothing, and the check passes for the wrong reason. Test both sneaking states. |
+| Particles, sounds, chat packets | Declare `recordPackets` for the bot. Through ViaVersion the packet names are `world_particles`, `sound_effect` and `system_chat`. `sound_effect` carries a numeric `soundId`; map it to a name with the registry of the client version (`minecraft-data`), or compare against a control run instead of naming it. |
 | Equipment changes | `e2eequip <player> <slot> <material>` |
 | Teams | console `team add/join/modify` |
 | Observe an event's final state | `e2elisten <fully.qualified.EventClass>` (logs after all listeners ran) |

@@ -5,7 +5,7 @@ description: Run end-to-end tests of a Minecraft/Paper plugin against a real Pap
 
 # Minecraft / Paper End-to-End Testing
 
-Use this skill to **execute** in-game checks automatically: build a Paper test environment, connect bots over the real Minecraft protocol, run scenarios, and report what was observed. It does not decide what to test; that comes from planned operations (`OP-xxx` in the target repository's `TESTING.md`, produced by [Minecraft / Paper In-Game Test Planning](../minecraft-paper-test-planning/SKILL.md)).
+Use this skill to **execute** in-game checks automatically: build a Paper test environment, connect bots over the real Minecraft protocol, run scenarios, and report what was observed. It does not decide what to test; that comes from planned operations (`OP-xxx`, or the prefix that the target repository's `TESTING.md` uses, such as `BT-xxx`, in that file, produced by [Minecraft / Paper In-Game Test Planning](../minecraft-paper-test-planning/SKILL.md)).
 
 Read the [E2E Testing Guidelines](../../guidelines/minecraft-paper-e2e-testing.md) first. They define when E2E is appropriate, the evidence rules, and the safety rules that this skill applies.
 
