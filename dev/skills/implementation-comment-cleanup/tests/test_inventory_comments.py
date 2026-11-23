@@ -185,7 +185,7 @@ class InventoryTests(unittest.TestCase):
 
     def test_invalid_utf8_is_reported_as_incomplete_scan(self):
         self.write("src/invalid.ts", "// placeholder")
-        (self.repo / "src/invalid.ts").write_bytes(b"\\xff")
+        (self.repo / "src/invalid.ts").write_bytes(b"\xff")
         proc = subprocess.run(
             [sys.executable, str(SCRIPT), "--repo", str(self.repo)],
             capture_output=True,
