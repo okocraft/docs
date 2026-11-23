@@ -79,7 +79,7 @@ An earlier bug or incident may explain *how* the implementation came about, but 
 
 `TODO` and `FIXME` comments MAY be used while exploring or implementing a change, including reminders about work required before production.
 
-**MUST:** Resolve or remove newly introduced work-in-progress `TODO` and `FIXME` comments before merging into `main`.
+**MUST:** Resolve or remove newly introduced work-in-progress `TODO` and `FIXME` comments before merging the change.
 
 When work can legitimately be deferred, track it in an issue with the necessary context instead of leaving an implementation comment as a standing task list. An issue does not justify merging incomplete behavior that is required for correctness or the intended release.
 
@@ -102,7 +102,7 @@ When adding or changing an implementation comment, check:
 3. Is it explaining a current reason, constraint, or invariant rather than narrating obvious behavior?
 4. If it describes *what*, is the complexity genuinely exceptional?
 5. Is the information useful for future maintenance, rather than a record of the development process?
-6. Is any temporary `TODO` or `FIXME` resolved before merge, or is deferred work tracked in an issue?
+6. Are all newly introduced `TODO` / `FIXME` comments resolved or removed before merge, with any legitimately deferred work tracked in an issue?
 7. Is the comment still accurate after the change?
 
 ## References
