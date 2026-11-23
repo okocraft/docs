@@ -23,7 +23,7 @@ Default to **cleanup mode** when asked to clean comments: investigate, make safe
 
 ## 1. Discover Comments and Define Scope
 
-1. Read the target repository's agent instructions and local conventions. Record the requested scope and starting revision.
+1. Read the target repository's agent instructions and local conventions. Record the requested scope, starting revision, and initial working-tree state (including staged, unstaged, and untracked files) so pre-existing changes can be distinguished from cleanup edits.
 2. Inspect tracked, human-maintained **source, tests, build scripts, and relevant configuration files**. Consult [discovery guidance](references/discovery.md) for candidate searches and comments consumed by tools.
 3. Exclude generated, vendored, minified, or third-party content from edits, along with copyright notices and documentation comments. Record excluded scope rather than classifying it as removable.
 4. Search for all applicable comment forms, including multiline and trailing comments. A text search is only candidate discovery: verify lexical context so URL literals, strings, regular expressions, and other non-comments are not misclassified. Check files that the text search might miss.
@@ -73,7 +73,7 @@ Review the complete diff to ensure no code, build settings, license text, genera
 
 ## 4. Validate and Report
 
-- Run ``git diff --check`` and inspect the diff against the starting revision. Run focused formatting, build, lint, or tests when relevant; report checks that could not run rather than assuming success.
+- Run ``git diff --check <starting-revision>`` to inspect whitespace errors across tracked changes, including staged and unstaged edits, and review the diff against that revision. Compare with the recorded initial working-tree state to distinguish pre-existing changes from cleanup edits. Check any newly created, untracked files separately, since Git diff does not include them. Run focused formatting, build, lint, or tests when relevant; report checks that could not run rather than assuming success.
 - Remember that removing a tooling directive may change compilation or behavior even when executable lines are untouched. Verify its purpose before classifying it as removable.
 - Report findings using the [report template](references/report-template.md). Include **KEEP**, **REMOVE**, **REWRITE**, and **ASK**, with locations, concise reasons, and evidence. Group repetitive findings only if every location remains discoverable.
 - Distinguish proposed from applied changes. Report classification counts, unresolved questions, excluded/generated areas, unchecked areas, and validation results. Do not count excluded material as removed.
