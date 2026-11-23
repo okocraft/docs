@@ -68,7 +68,7 @@ def make_candidate(text, newlines, start, end, kind):
             'kind': kind, 'text': raw, 'hints': hints(raw)}
 
 
-def scan_slash(text):
+def scan_slash(text, is_go=False):
     """Scan comments outside simple strings; handle JS template substitutions.
 
     Not a full grammar parser (notably JSX and regex literals). Any results
@@ -132,7 +132,8 @@ def scan_slash(text):
                 i = quoted(i, text[i])
                 continue
             if text[i] == chr(96):
-                i = template(i)
+                # Go backticks delimit raw strings; only JS/TS interpolates templates.
+                i = quoted(i, chr(96)) if is_go else template(i)
                 continue
             i += 1
         return i
@@ -198,7 +199,8 @@ def inventory(repo, paths=()):
             continue
         result['scanned_files'].append(name)
         scanner = {'slash': scan_slash, 'xml': scan_xml, 'hash': scan_hash}[kind]
-        for item in scanner(data):
+        items = scan_slash(data, is_go=PurePosixPath(name).suffix == '.go') if kind == 'slash' else scanner(data)
+        for item in items:
             result['candidates'].append({'path': name, **item})
     return result
 
