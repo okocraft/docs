@@ -58,7 +58,7 @@ For Python scripts under `dev/skills`, this repository runs:
 - **syntax compilation:** `python -m compileall -q dev/skills`;
 - **unit tests:** `python -m unittest discover -s dev/skills/implementation-comment-cleanup/tests -v` for the existing comment cleanup skill.
 
-The [Python Skill Scripts workflow](../../.github/workflows/python-skills.yml) runs linting and tests on pull requests and on `main`. It tests a representative oldest supported Python runtime and a current stable runtime; update the matrix when support policy changes. Future skills with Python code SHOULD add focused tests and register them in the workflow rather than assuming the current test command discovers every skill.
+The [Python Skill Scripts workflow](../../.github/workflows/python-skills.yml) runs linting and tests on pull requests and on `main`, targeting the current stable Python release (currently Python 3.15). There is no older-version compatibility commitment for these internal helper scripts. When a new stable minor release is adopted, update the workflow, Ruff target, and documented runtime requirement together. Future skills with Python code SHOULD add focused tests and register them in the workflow rather than assuming the current test command discovers every skill.
 
 The runtime scripts do not import Ruff: `requirements-dev.txt` contains tooling for maintainers and CI, not runtime requirements. Renovate updates that tooling through the shared Python preset.
 
