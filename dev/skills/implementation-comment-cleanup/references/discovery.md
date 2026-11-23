@@ -1,76 +1,70 @@
-# Comment Discovery and Exclusions
+# Comment Candidate Discovery
 
-This reference supports the [implementation comment cleanup skill](../SKILL.md). Use it to **find candidates and identify exclusions**, not to decide whether an implementation comment is worth keeping. Apply the skill's four-way classification only after discovery and filtering.
+Use the bundled [`scripts/inventory_comments.py`](../scripts/inventory_comments.py) as the **standard discovery mechanism** for the [implementation comment cleanup skill](../SKILL.md). The script finds potential comments; it does not decide whether they are comments, documentation, directives, or removable prose.
 
-## Coverage
+## Run the Script
 
-Check tracked, human-maintained files across application code, tests, build logic, and relevant source-adjacent configuration. Typical candidates include:
-
-| Area | File families / examples | Comment forms to consider |
-| --- | --- | --- |
-| JVM source and build logic | `*.java`, `*.kt`, `*.kts`, `*.groovy`, `*.gradle`, `*.gradle.kts`, `settings.gradle*`, `build.gradle*` | ``//``, ``/* ... */``, documentation comments |
-| Maven and JVM configuration | `pom.xml`, build-related `*.xml`, `gradle.properties`, `*.properties`, version catalogs (`*.toml`) | ``<!-- ... -->``, ``#`` / ``!`` as supported |
-| Go | `*.go`, `go.mod`, `go.work` and handwritten build scripts | ``//``, ``/* ... */``, module-file trailing comments |
-| TypeScript and related runtime/build scripts | `*.ts`, `*.tsx`, `*.js`, `*.jsx`, `*.mjs`, `*.cjs`, `*.mts`, `*.cts`, `*.jsonc`, `tsconfig*.json` | ``//``, ``/* ... */``, JSDoc/TSDoc, triple-slash directives |
-| Build infrastructure | `Makefile`, `GNUmakefile`, `*.mk`, `*.sh`, relevant `*.yml`, `*.yaml`, `*.toml` | ``#`` or configuration-specific syntax |
-
-Scope build configuration deliberately: not every XML/YAML/properties file is executable build logic, but comments in a build script or CI workflow may contain critical assumptions.
-
-### Candidate discovery
-
-Prefer a tracked-file inventory before text searching; for example:
+From any directory, with Python 3.9+ and Git available:
 
 ```sh
-git status --short
-git ls-files -- '*.java' '*.kt' '*.kts' '*.groovy' '*.gradle' '*.gradle.kts' \
-  '*.go' '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' '*.mts' '*.cts' \
-  '*.jsonc' 'tsconfig*.json' 'pom.xml' 'go.mod' 'go.work' \
-  '*.toml' '*.properties' '*.xml' '*.yml' '*.yaml' '*.sh' 'Makefile' 'GNUmakefile'
+python3 <skill-directory>/scripts/inventory_comments.py \
+  --repo <target-repository> \
+  --output <temporary-directory>/comment-candidates.json
 ```
 
-Search likely delimiters in those paths. Sample *candidate* searches, not definitive parsers:
+Restrict the scan with repeatable ``--path src/main`` or ``--path build.gradle.kts`` arguments (relative to the target repository root). Omit ``--output`` to print JSON to standard output.
+
+**Do not rewrite or improvise the search patterns for supported files.** When the requested scope contains unsupported syntax, inventory that part with an appropriate method and explicitly report the supplemental coverage. Do not imply the built-in script scanned it.
+
+The script reads the **current worktree** of Git-tracked files (including staged and unstaged edits). It does not edit files, download packages, read ignored/untracked files, or follow symlinks. Record the initial Git state separately so existing user changes are not attributed to cleanup edits.
+
+## Deterministic Output
+
+JSON includes:
+
+| Field | Meaning |
+| --- | --- |
+| ``schema_version`` | Format version |
+| ``scope`` | Requested path restrictions |
+| ``scanned_files`` | Tracked, readable files scanned |
+| ``excluded_files`` | Files skipped by deterministic generated/dependency/path rules, with reasons |
+| ``unreadable_files`` | Tracked files that could not be read |
+| ``candidates`` | Each potential comment's path, start/end line, lexical kind, original candidate text, and advisory ``hints`` |
+| ``notes`` | Known limits of discovery |
+
+The output is deterministically ordered by tracked path and candidate position. Its count is **not** the number of implementation comment units: confirmation, exclusion, and grouping happen afterward.
+
+A nonzero exit code or unreadable files means discovery was incomplete. Resolve or disclose gaps; never claim full coverage based solely on a successful scan.
+
+## File Coverage
+
+The standard script includes the source and build file families needed for initial use:
+
+- Java/JVM source and build scripts, including Gradle, Kotlin DSL and Groovy DSL; Maven XML, properties, version catalogs;
+- Go source and module/workspace files;
+- TypeScript/JavaScript source and common variants, including TSX/JSX, and comment-bearing JSONC/JSON5;
+- Shell, Makefiles, YAML, TOML, XML, and relevant build/configuration formats.
+
+It recognizes ``//``, ``/* ... */``, XML comments, and broad ``#``/``!`` candidate patterns as appropriate. Multiline and trailing comments are included. Known generated, dependency, minified, and lockfile paths are skipped with reasons.
+
+File-extension coverage is intentionally explicit and maintained in the script; do not duplicate file globs in the skill instructions. Add support and tests in the script when permanent new coverage is needed.
+
+## Filter and Classify After Discovery
+
+1. **Check the candidate:** confirm that the reported token is really a comment. The scanner is lexical, not a complete language parser; URLs, Go raw strings, JSX, template literals, regular expressions, shell expansions, and quoted configuration values can produce false positives or omissions. Inspect the source syntax and use language tooling where helpful.
+2. **Exclude out-of-scope material:** Javadoc/KDoc/JSDoc/TSDoc, Go API documentation comments (often written with ``//``), license and copyright notices, generated and vendored material, and test fixtures whose comment-looking text is part of the test data. Record exclusions without counting them as removed.
+3. **Protect semantic comments:** Go build constraints, ``//go:generate``, ``//go:embed``, cgo directives, ``// indirect`` in module files; TypeScript triple-slash references and ``@ts-`` annotations; ESLint/formatter controls; source maps, optimizer/bundler annotations, shell shebangs, and build pragmas. These may alter compilation or tool behavior. **Active directives normally remain KEEP**; investigate uncertain directives before modifying them.
+4. **Group comment units:** one independent explanation, task, or directive is one review unit. Multiple nearby explanations with different purposes are separate units even if the script reports one contiguous block.
+5. **Decide:** apply the SKILL's KEEP / REMOVE / REWRITE / ASK criteria using actual surrounding code, tests, and relevant contracts. Advisory ``hints`` such as task, documentation candidate, legal, or tool directive **never** authorize automatic deletion or retention.
+
+If a tracked file is unexpectedly missing from ``scanned_files``, investigate whether its extension is supported, a skip rule applies, it is unreadable, or it falls outside the requested scope. Record all unreviewed files and why.
+
+## Local Verification
+
+The skill's bundled self-contained tests can be run without additional dependencies:
 
 ```sh
-rg -n --glob '*.{java,kt,kts,groovy,gradle,go,ts,tsx,js,jsx,mjs,cjs,mts,cts,jsonc}' \
-  '//|/\*|\*/' .
-rg -n --glob 'go.mod' --glob 'go.work' '//' .
-rg -n --glob '*.xml' '<!--|-->' .
-rg -n --glob '*.{toml,properties,yml,yaml,sh,mk}' '[#!]' .
-rg -n --glob 'Makefile' --glob 'GNUmakefile' '#' .
+python3 -m unittest discover -s <skill-directory>/tests -v
 ```
 
-These globs and delimiters are **examples, not a fixed language list**. Adapt them to the source and build files actually present, including compound extensions and languages not shown here. The first search already covers Go source and TypeScript; the additional searches cover Go module metadata, XML comments, configuration comments, and extensionless Makefiles. Include trailing comment markers. Check ignored files only when explicitly in scope. Use syntax-aware tooling (parsers, language servers, IDE navigation) where available: string literals, URLs, template literals, and regular expressions can cause false matches. Inspect whole multiline comments, not isolated matches.
-
-Do not use a broad replacement command based solely on the above expressions.
-
-## Filter Candidates Before Classification
-
-Apply these steps in order:
-
-1. **Discover:** find potential comments, including documentation and tool directives, with syntax-appropriate searches.
-2. **Verify and exclude:** confirm that each match is a comment, not text inside a literal; exclude API documentation, legal notices, generated/vendor content, and other out-of-scope material from cleanup counts.
-3. **Classify:** retain tool-consumed directives as in-scope units and generally **KEEP** them when active. Classify the remaining implementation comments as KEEP / REMOVE / REWRITE / ASK using the skill's evidence rules.
-
-Do not exclude a comment solely because it uses documentation-style delimiters: determine whether it is actually API documentation, a directive, or ordinary implementation prose. In particular, Go doc comments often use ``//``.
-
-**Documentation and legal notices (outside normal cleanup):**
-
-- Java Javadoc, Kotlin KDoc, TypeScript/JSDoc/TSDoc, and Go doc comments (which may use ``//``), including public APIs and reusable components.
-- Copyright and license headers, SPDX identifiers, legal notices, and tool-required attribution.
-- Documentation files and comments inside generated or vendored sources.
-
-**Compiler, build, and tool semantics (usually KEEP; investigate before touching):**
-
-- Go build constraints and directives: ``//go:build``, ``// +build``, ``//go:generate``, ``//go:embed``, compiler/linker directives, and cgo preambles. In `go.mod`, ``// indirect`` can convey module metadata.
-- TypeScript triple-slash references and ``@ts-check``, ``@ts-nocheck``, ``@ts-ignore``, ``@ts-expect-error``; ESLint/Biome/Deno lint controls; formatting or coverage directives; source-map comments; bundler/optimizer annotations such as ``/*#__PURE__*/``, ``/* @vite-ignore */``, or webpack magic comments.
-- Language-level or build-system comments consumed by tools, such as formatter off/on regions, IDE inspection directives, shell shebangs, Makefile recipe semantics, and configuration pragmas.
-- Generated-file markers (`Code generated ... DO NOT EDIT`) and test fixtures that intentionally contain comment text to exercise a parser or expected output.
-
-An active directive should normally be **KEEP** with its tool purpose noted, even if it does not read like an explanation. When a suppression looks stale, establish through relevant lint/type checking that it is unnecessary before removing it. If the effect is uncertain, **ASK**. Avoid mechanical deletion of build-file comments until their tool-specific meaning has been checked.
-
-## Exclusions and Search Quality
-
-- Normally exclude dependency directories (`node_modules`, `vendor`), build outputs (`build`, `target`, `dist`), generated source, bundled/minified assets, lockfiles, and third-party copies. Record intentional exclusions rather than treating them as missing coverage.
-- Check for files ignored by `rg` or Git when the user explicitly includes them; do not silently assume an ignored file has no relevant comments.
-- A comment can span several lines or annotate a statement at the end of a line. Group such fragments by logical purpose.
-- Compare branch and working-tree state before editing. Never overwrite unrelated user changes while cleaning comments.
+These validate inventory behavior on temporary Git repositories; they do not replace per-repository validation of the resulting cleanup diff.
