@@ -24,7 +24,7 @@ class InventoryTests(unittest.TestCase):
 
     def scan(self, *args):
         p = subprocess.run([sys.executable, str(SCRIPT), '--repo', str(self.repo), *args],
-                           check=True, capture_output=True, text=True)
+                           check=True, capture_output=True, text=True, check=False)
         return json.loads(p.stdout)
 
     def test_multiline_trailing_strings_and_go_raw(self):
@@ -81,7 +81,7 @@ class InventoryTests(unittest.TestCase):
             with self.subTest(path=missing):
                 proc = subprocess.run(
                     [sys.executable, str(SCRIPT), '--repo', str(self.repo), '--path', missing],
-                    capture_output=True, text=True)
+                    capture_output=True, text=True, check=False)
                 self.assertNotEqual(proc.returncode, 0)
                 self.assertIn('error:', proc.stderr)
 
@@ -92,7 +92,7 @@ class InventoryTests(unittest.TestCase):
         proc = subprocess.run(
             [sys.executable, str(SCRIPT), '--repo', str(self.repo),
              '--path', './src', '--output', str(result_path)],
-            capture_output=True, text=True)
+            capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 2)
         self.assertIn('WARNING: src/pattern.ts:1:', proc.stderr)
         self.assertIn('scan warnings', proc.stdout)
@@ -108,7 +108,7 @@ class InventoryTests(unittest.TestCase):
         self.write('src/a.java', 'class A { /* accidental unclosed comment\n')
         proc = subprocess.run(
             [sys.executable, str(SCRIPT), '--repo', str(self.repo)],
-            capture_output=True, text=True)
+            capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 2)
         self.assertEqual(len(json.loads(proc.stdout)['scan_warnings']), 1)
 
