@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 
-C_LIKE = {
+SLASH_SUFFIXES = {
     ".java",
     ".kt",
     ".kts",
@@ -31,9 +31,9 @@ C_LIKE = {
     ".jsonc",
     ".json5",
 }
-XML = {".xml"}
-HASH = {".toml", ".properties", ".yml", ".yaml", ".sh", ".bash", ".zsh", ".mk"}
-HASH_NAMES = {
+XML_SUFFIXES = {".xml"}
+HASH_SUFFIXES = {".toml", ".properties", ".yml", ".yaml", ".sh", ".bash", ".zsh", ".mk"}
+HASH_FILENAMES = {
     "Makefile",
     "GNUmakefile",
     "Dockerfile",
@@ -44,8 +44,10 @@ HASH_NAMES = {
     "gradlew",
     "mvnw",
 }
-C_NAMES = {"go.mod", "go.work"}
-SKIP_DIRS = {
+SLASH_FILENAMES = {"go.mod", "go.work"}
+BACKTICK = "`"
+TEMPLATE_INTERPOLATION = "${"
+EXCLUDED_DIRECTORIES = {
     ".git",
     ".gradle",
     ".next",
@@ -58,7 +60,7 @@ SKIP_DIRS = {
     "generated",
     "__generated__",
 }
-SKIP_NAMES = {
+EXCLUDED_FILENAMES = {
     "package-lock.json",
     "pnpm-lock.yaml",
     "yarn.lock",
@@ -88,29 +90,31 @@ HINTS = (
 )
 
 
-def source_kind(name):
+def source_kind(name: str) -> str | None:
     path = PurePosixPath(name)
-    if path.name in C_NAMES or path.suffix.lower() in C_LIKE:
+    if path.name in SLASH_FILENAMES or path.suffix.lower() in SLASH_SUFFIXES:
         return "slash"
-    if path.suffix.lower() in XML:
+    if path.suffix.lower() in XML_SUFFIXES:
         return "xml"
-    if path.name in HASH_NAMES or path.suffix.lower() in HASH:
+    if path.name in HASH_FILENAMES or path.suffix.lower() in HASH_SUFFIXES:
         return "hash"
     return None
 
 
-def skip_reason(name):
+def skip_reason(name: str) -> str | None:
     path = PurePosixPath(name)
-    if any(part in SKIP_DIRS for part in path.parts[:-1]):
+    if any(part in EXCLUDED_DIRECTORIES for part in path.parts[:-1]):
         return "generated/dependency/build directory"
-    if path.name in SKIP_NAMES or path.name.endswith((".min.js", ".min.css", ".map")):
+    if path.name in EXCLUDED_FILENAMES or path.name.endswith(
+        (".min.js", ".min.css", ".map")
+    ):
         return "generated/lock/minified file"
     if re.search(r"(?:\.generated\.[^.]+|\.g\.ts|_gen\.go)$", path.name):
         return "generated filename"
     return None
 
 
-def line_number(newlines, pos):
+def line_number(newlines: list[int], pos: int) -> int:
     return bisect.bisect_left(newlines, pos) + 1
 
 
@@ -160,9 +164,9 @@ def scan_slash(text, is_go=False, warnings=None):
         while i < n:
             if text[i] == "\\":
                 i += 2
-            elif text[i] == chr(96):
+            elif text[i] == BACKTICK:
                 return i + 1
-            elif text.startswith(chr(36) + "{", i):
+            elif text.startswith(TEMPLATE_INTERPOLATION, i):
                 i = code(i + 2, interpolated=True)
             else:
                 i += 1
@@ -208,7 +212,7 @@ def scan_slash(text, is_go=False, warnings=None):
                 continue
             if text[i] == chr(96):
                 # Go backticks delimit raw strings; only JS/TS interpolates templates.
-                i = quoted(i, chr(96)) if is_go else template(i)
+                i = quoted(i, BACKTICK) if is_go else template(i)
                 continue
             i += 1
         return i
@@ -251,7 +255,7 @@ def scan_hash(text):
     return out
 
 
-def normalize_scope(path):
+def normalize_scope(path: str) -> str:
     path = path.replace("\\", "/")
     if not path or path.startswith("/") or re.match(r"^[A-Za-z]:", path):
         raise ValueError(f"--path must be relative to the repository: {path!r}")
@@ -261,24 +265,47 @@ def normalize_scope(path):
     return "" if normalized == "." else normalized
 
 
-def inventory(repo, paths=()):
-    proc = subprocess.run(
+def tracked_paths(repo: Path) -> list[str]:
+    completed = subprocess.run(
         ["git", "-C", str(repo), "ls-files", "-z"], capture_output=True, check=True
     )
-    names = sorted(
-        p.decode("utf-8", "surrogateescape") for p in proc.stdout.split(b"\0") if p
+    return sorted(
+        name.decode("utf-8", "surrogateescape")
+        for name in completed.stdout.split(b"\0")
+        if name
     )
-    scope = tuple(normalize_scope(p) for p in paths)
-    for p in scope:
+
+
+def matches_scope(name: str, scope: str) -> bool:
+    return not scope or name == scope or name.startswith(scope + "/")
+
+
+def validate_scopes(names: list[str], scopes: tuple[str, ...]) -> None:
+    for scope in scopes:
         if not any(
-            (not p or name == p or name.startswith(p + "/"))
-            and source_kind(name)
-            and not skip_reason(name)
+            matches_scope(name, scope) and source_kind(name) and not skip_reason(name)
             for name in names
         ):
             raise ValueError(
-                f"--path {p or '.'!r} matches no tracked, supported source/build files"
+                f"--path {scope or '.'!r} matches no tracked, supported source/build files"
             )
+
+
+def scan_file_content(text: str, name: str, warnings: list[dict]) -> list[dict]:
+    kind = source_kind(name)
+    if kind == "slash":
+        return scan_slash(
+            text, is_go=PurePosixPath(name).suffix == ".go", warnings=warnings
+        )
+    if kind == "xml":
+        return scan_xml(text)
+    return scan_hash(text)
+
+
+def inventory(repo: Path, paths=()):
+    names = tracked_paths(repo)
+    scope = tuple(normalize_scope(path) for path in paths)
+    validate_scopes(names, scope)
     result = {
         "schema_version": 1,
         "scanned_files": [],
@@ -294,9 +321,7 @@ def inventory(repo, paths=()):
         ],
     }
     for name in names:
-        if scope and not any(
-            not p or name == p or name.startswith(p + "/") for p in scope
-        ):
+        if scope and not any(matches_scope(name, path) for path in scope):
             continue
         kind = source_kind(name)
         if not kind:
@@ -319,15 +344,8 @@ def inventory(repo, paths=()):
             )
             continue
         result["scanned_files"].append(name)
-        scanner = {"slash": scan_slash, "xml": scan_xml, "hash": scan_hash}[kind]
         warnings = []
-        items = (
-            scan_slash(
-                data, is_go=PurePosixPath(name).suffix == ".go", warnings=warnings
-            )
-            if kind == "slash"
-            else scanner(data)
-        )
+        items = scan_file_content(data, name, warnings)
         for warning in warnings:
             result["scan_warnings"].append({"path": name, **warning})
         for item in items:
@@ -359,7 +377,10 @@ def main(argv=None):
         parser.error(str(exc))
     data = json.dumps(result, indent=2, ensure_ascii=False) + "\n"
     if args.output:
-        args.output.write_text(data, encoding="utf-8")
+        try:
+            args.output.write_text(data, encoding="utf-8")
+        except OSError as exc:
+            parser.error(f"Cannot write inventory to {args.output}: {exc}")
         print(
             f"Scanned {len(result['scanned_files'])} files; {len(result['candidates'])} candidates; "
             f"{len(result['excluded_files'])} excluded; {len(result['unreadable_files'])} unreadable; "
