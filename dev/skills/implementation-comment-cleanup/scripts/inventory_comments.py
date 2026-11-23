@@ -187,8 +187,12 @@ def inventory(repo, paths=()):
         if reason:
             result['excluded_files'].append({'path': name, 'reason': reason})
             continue
+        file_path = repo / name
+        if file_path.is_symlink():
+            result['excluded_files'].append({'path': name, 'reason': 'symlink (not followed)'})
+            continue
         try:
-            data = (repo / name).read_text(encoding='utf-8')
+            data = file_path.read_text(encoding='utf-8')
         except (OSError, UnicodeError) as exc:
             result['unreadable_files'].append({'path': name, 'reason': type(exc).__name__})
             continue
