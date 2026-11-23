@@ -70,5 +70,48 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(data, self.scan('--path', 'src'))
 
 
+    def test_path_normalization_and_missing_scope_failures(self):
+        self.write('src/a.ts', '// tracked\n')
+        self.write('build.gradle', '// tracked build\n')
+        self.assertEqual(self.scan('--path', './src')['scanned_files'], ['src/a.ts'])
+        self.assertEqual(self.scan('--path', 'src/../src')['scanned_files'], ['src/a.ts'])
+        self.assertEqual(self.scan('--path', '.') ['scanned_files'], ['build.gradle', 'src/a.ts'])
+        self.assertEqual(self.scan('--path', './')['scanned_files'], ['build.gradle', 'src/a.ts'])
+        for missing in ('./missing', 'docs', '../outside', '/absolute'):
+            with self.subTest(path=missing):
+                proc = subprocess.run(
+                    [sys.executable, str(SCRIPT), '--repo', str(self.repo), '--path', missing],
+                    capture_output=True, text=True)
+                self.assertNotEqual(proc.returncode, 0)
+                self.assertIn('error:', proc.stderr)
+
+    def test_unterminated_block_candidate_flags_incomplete_scan(self):
+        self.write('src/pattern.ts',
+                   'const pattern = /[/*]/;\n\n// Important: initialization order matters.\ninitialize();\n')
+        result_path = self.repo / 'inventory.json'
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPT), '--repo', str(self.repo),
+             '--path', './src', '--output', str(result_path)],
+            capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn('WARNING: src/pattern.ts:1:', proc.stderr)
+        self.assertIn('scan warnings', proc.stdout)
+        data = json.loads(result_path.read_text(encoding='utf-8'))
+        self.assertEqual(data['scope'], ['src'])
+        self.assertEqual(len(data['scan_warnings']), 1)
+        warning = data['scan_warnings'][0]
+        self.assertEqual((warning['path'], warning['line']), ('src/pattern.ts', 1))
+        self.assertIn('Manually inspect', warning['reason'])
+        self.assertEqual(data['scanned_files'], ['src/pattern.ts'])
+
+    def test_unterminated_real_block_comment_also_warns(self):
+        self.write('src/a.java', 'class A { /* accidental unclosed comment\n')
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPT), '--repo', str(self.repo)],
+            capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 2)
+        self.assertEqual(len(json.loads(proc.stdout)['scan_warnings']), 1)
+
+
 if __name__ == '__main__':
     unittest.main()
