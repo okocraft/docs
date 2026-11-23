@@ -74,21 +74,11 @@ Assume readers are developers familiar with the programming language, its common
 
 ## 3. Keep Comments Relevant to Future Maintenance
 
-**SHOULD:** Write comments that would still be useful to someone reading or modifying the code later, without knowledge of the original development session.
+**SHOULD:** Write comments that remain useful for future maintenance. Explain *why the current implementation is necessary*, not how it came about.
 
-Avoid comments that record:
-
-- what was tried during implementation;
-- who requested a change or what was discussed in review;
-- why a particular commit or PR was created;
-- temporary workarounds or plans that no longer apply;
-- historical details that do not explain a current constraint.
-
-Development history, alternative approaches considered, and the evolution of a decision belong in commits, PR descriptions, discussions, and issues. Preserve enough context there for a future maintainer to follow it through `git blame` and the associated change.
+Keep implementation attempts, review discussions, past decisions, and temporary plans out of comments unless they explain a constraint that still applies. Record development history in commits, PRs, or issues so it can be traced through `git blame`.
 
 **SHOULD:** When a non-obvious implementation depends on a currently relevant external contract, describe that contract in the comment. A link to authoritative specifications or an upstream issue MAY be added when it materially helps verification; a bare issue or PR reference is not an explanation.
-
-An earlier bug or incident may explain *how* the implementation came about, but the comment should explain *why the code must behave this way now*.
 
 ## 4. Treat TODO and FIXME as Temporary Work Notes
 
@@ -107,8 +97,6 @@ Existing comments of this kind do not require unrelated cleanup solely to adopt 
 **SHOULD:** Prefer concise comments close to the relevant code. Avoid duplicating the same explanation across locations when it can be captured once at a meaningful boundary.
 
 **SHOULD:** Write implementation comments in English unless the repository explicitly follows a different language convention.
-
-Comments are not automatically better because they are detailed. A comment is useful when its information would otherwise be missing and remains valid as the code evolves.
 
 ## 6. Review Checklist
 
