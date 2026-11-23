@@ -29,7 +29,7 @@ class InventoryTests(unittest.TestCase):
 
     def test_multiline_trailing_strings_and_go_raw(self):
         self.write('src/A.java', 'String url = "https://example.org/a"; // actual\n/* several\n lines */\nString s = "/*not a comment*/";\n/** Docs */\n')
-        self.write('src/main.go', 'package main\nconst s = `// not comment`\n//go:build linux\n// real\n')
+        self.write('src/main.go', 'package main\nconst s = `// not comment ${x /* also raw text */}`\n//go:build linux\n// real\n')
         self.write('src/ui.ts', 'const s = `ignored // text ${value /* interpolation */}`;\nconst url = "https://x"; // real\n')
         data = self.scan()
         c = data['candidates']
