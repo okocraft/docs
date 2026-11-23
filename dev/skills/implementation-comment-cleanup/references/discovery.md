@@ -6,11 +6,11 @@ Use the bundled [`scripts/inventory_comments.py`](../scripts/inventory_comments.
 
 From any directory, with Python 3.9+ and Git available:
 
-``sh
+```sh
 python3 <skill-directory>/scripts/inventory_comments.py \
   --repo <target-repository> \
   --output <temporary-directory>/comment-candidates.json
-``
+```
 
 Restrict the scan with repeatable `--path src/main` or `--path build.gradle.kts` arguments (relative to the target repository root). Paths such as `./src` are normalized, and `--path .` scans the whole repository. Missing, unsupported-only, absolute, or outside-repository scope paths fail with an explicit error rather than reporting a successful empty scan. Omit `--output` to print JSON to standard output.
 
@@ -64,8 +64,8 @@ If a tracked file is unexpectedly missing from `scanned_files`, investigate whet
 
 The skill's bundled self-contained tests can be run without additional dependencies:
 
-``sh
+```sh
 python3 -m unittest discover -s <skill-directory>/tests -v
-``
+```
 
 These validate inventory behavior on temporary Git repositories; they do not replace per-repository validation of the resulting cleanup diff.
