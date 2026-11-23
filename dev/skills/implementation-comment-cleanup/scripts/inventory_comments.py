@@ -263,24 +263,47 @@ def normalize_scope(path: str) -> str:
     return "" if normalized == "." else normalized
 
 
-def inventory(repo, paths=()):
-    proc = subprocess.run(
+def tracked_paths(repo: Path) -> list[str]:
+    completed = subprocess.run(
         ["git", "-C", str(repo), "ls-files", "-z"], capture_output=True, check=True
     )
-    names = sorted(
-        p.decode("utf-8", "surrogateescape") for p in proc.stdout.split(b"\0") if p
+    return sorted(
+        name.decode("utf-8", "surrogateescape")
+        for name in completed.stdout.split(b"\0")
+        if name
     )
-    scope = tuple(normalize_scope(p) for p in paths)
-    for p in scope:
+
+
+def matches_scope(name: str, scope: str) -> bool:
+    return not scope or name == scope or name.startswith(scope + "/")
+
+
+def validate_scopes(names: list[str], scopes: tuple[str, ...]) -> None:
+    for scope in scopes:
         if not any(
-            (not p or name == p or name.startswith(p + "/"))
-            and source_kind(name)
-            and not skip_reason(name)
+            matches_scope(name, scope) and source_kind(name) and not skip_reason(name)
             for name in names
         ):
             raise ValueError(
-                f"--path {p or '.'!r} matches no tracked, supported source/build files"
+                f"--path {scope or '.'!r} matches no tracked, supported source/build files"
             )
+
+
+def scan_file_content(text: str, name: str, warnings: list[dict]) -> list[dict]:
+    kind = source_kind(name)
+    if kind == "slash":
+        return scan_slash(
+            text, is_go=PurePosixPath(name).suffix == ".go", warnings=warnings
+        )
+    if kind == "xml":
+        return scan_xml(text)
+    return scan_hash(text)
+
+
+def inventory(repo: Path, paths=()):
+    names = tracked_paths(repo)
+    scope = tuple(normalize_scope(path) for path in paths)
+    validate_scopes(names, scope)
     result = {
         "schema_version": 1,
         "scanned_files": [],
@@ -296,9 +319,7 @@ def inventory(repo, paths=()):
         ],
     }
     for name in names:
-        if scope and not any(
-            not p or name == p or name.startswith(p + "/") for p in scope
-        ):
+        if scope and not any(matches_scope(name, path) for path in scope):
             continue
         kind = source_kind(name)
         if not kind:
@@ -321,15 +342,8 @@ def inventory(repo, paths=()):
             )
             continue
         result["scanned_files"].append(name)
-        scanner = {"slash": scan_slash, "xml": scan_xml, "hash": scan_hash}[kind]
         warnings = []
-        items = (
-            scan_slash(
-                data, is_go=PurePosixPath(name).suffix == ".go", warnings=warnings
-            )
-            if kind == "slash"
-            else scanner(data)
-        )
+        items = scan_file_content(data, name, warnings)
         for warning in warnings:
             result["scan_warnings"].append({"path": name, **warning})
         for item in items:
@@ -361,7 +375,10 @@ def main(argv=None):
         parser.error(str(exc))
     data = json.dumps(result, indent=2, ensure_ascii=False) + "\n"
     if args.output:
-        args.output.write_text(data, encoding="utf-8")
+        try:
+            args.output.write_text(data, encoding="utf-8")
+        except OSError as exc:
+            parser.error(f"Cannot write inventory to {args.output}: {exc}")
         print(
             f"Scanned {len(result['scanned_files'])} files; {len(result['candidates'])} candidates; "
             f"{len(result['excluded_files'])} excluded; {len(result['unreadable_files'])} unreadable; "
