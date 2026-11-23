@@ -8,6 +8,7 @@ not an API-documentation classifier or an instruction to delete comments.
 import argparse
 import bisect
 import json
+import posixpath
 import re
 import subprocess
 import sys
@@ -68,13 +69,15 @@ def make_candidate(text, newlines, start, end, kind):
             'kind': kind, 'text': raw, 'hints': hints(raw)}
 
 
-def scan_slash(text, is_go=False):
+def scan_slash(text, is_go=False, warnings=None):
     """Scan comments outside simple strings; handle JS template substitutions.
 
     Not a full grammar parser (notably JSX and regex literals). Any results
     remain candidates and must be syntax-checked before classification.
     """
     out = []
+    if warnings is None:
+        warnings = []
     newlines = [i for i, ch in enumerate(text) if ch == '\n']
     n = len(text)
 
@@ -121,7 +124,12 @@ def scan_slash(text, is_go=False):
                 continue
             if text.startswith('/*', i):
                 end = text.find('*/', i + 2)
-                end = n if end < 0 else end + 2
+                if end < 0:
+                    warnings.append({'line': line_number(newlines, i),
+                                     'reason': 'Unterminated block-comment candidate; may be a regex literal. Manually inspect this file for missed comments.'})
+                    end = n
+                else:
+                    end += 2
                 out.append(make_candidate(text, newlines, i, end, 'block'))
                 i = end
                 continue
@@ -169,17 +177,31 @@ def scan_hash(text):
     return out
 
 
+def normalize_scope(path):
+    path = path.replace('\\', '/')
+    if not path or path.startswith('/') or re.match(r'^[A-Za-z]:', path):
+        raise ValueError(f'--path must be relative to the repository: {path!r}')
+    normalized = posixpath.normpath(path)
+    if normalized == '..' or normalized.startswith('../'):
+        raise ValueError(f'--path must remain inside the repository: {path!r}')
+    return '' if normalized == '.' else normalized
+
+
 def inventory(repo, paths=()):
     proc = subprocess.run(['git', '-C', str(repo), 'ls-files', '-z'], capture_output=True, check=True)
     names = sorted(p.decode('utf-8', 'surrogateescape') for p in proc.stdout.split(b'\0') if p)
-    scope = tuple(p.strip('/').replace('\\', '/') for p in paths)
+    scope = tuple(normalize_scope(p) for p in paths)
+    for p in scope:
+        if not any((not p or name == p or name.startswith(p + '/'))
+                   and source_kind(name) and not skip_reason(name) for name in names):
+            raise ValueError(f'--path {p or "."!r} matches no tracked, supported source/build files')
     result = {'schema_version': 1, 'scanned_files': [], 'excluded_files': [], 'unreadable_files': [],
-              'candidates': [], 'scope': list(scope),
+              'scan_warnings': [], 'candidates': [], 'scope': [p or '.' for p in scope],
               'notes': ['Candidates are not confirmed comments; syntax, directives and documentation status require review.',
                         'Only tracked files are scanned; ignored and untracked files are not included.',
                         'The slash scanner is not a full parser; inspect complex syntax such as JSX/regex and embedded templates.']}
     for name in names:
-        if scope and not any(name == p or name.startswith(p + '/') for p in scope):
+        if scope and not any(not p or name == p or name.startswith(p + '/') for p in scope):
             continue
         kind = source_kind(name)
         if not kind:
@@ -199,7 +221,10 @@ def inventory(repo, paths=()):
             continue
         result['scanned_files'].append(name)
         scanner = {'slash': scan_slash, 'xml': scan_xml, 'hash': scan_hash}[kind]
-        items = scan_slash(data, is_go=PurePosixPath(name).suffix == '.go') if kind == 'slash' else scanner(data)
+        warnings = []
+        items = scan_slash(data, is_go=PurePosixPath(name).suffix == '.go', warnings=warnings) if kind == 'slash' else scanner(data)
+        for warning in warnings:
+            result['scan_warnings'].append({'path': name, **warning})
         for item in items:
             result['candidates'].append({'path': name, **item})
     return result
@@ -216,15 +241,19 @@ def main(argv=None):
         result = inventory(repo, args.path)
     except subprocess.CalledProcessError as exc:
         parser.error('Cannot list tracked files: ' + str(exc))
+    except ValueError as exc:
+        parser.error(str(exc))
     data = json.dumps(result, indent=2, ensure_ascii=False) + '\n'
     if args.output:
         args.output.write_text(data, encoding='utf-8')
         print(f'Scanned {len(result["scanned_files"])} files; {len(result["candidates"])} candidates; '
-              f'{len(result["excluded_files"])} excluded; {len(result["unreadable_files"])} unreadable. '
-              f'Output: {args.output}')
+              f'{len(result["excluded_files"])} excluded; {len(result["unreadable_files"])} unreadable; '
+              f'{len(result["scan_warnings"])} scan warnings. Output: {args.output}')
     else:
         sys.stdout.write(data)
-    if result['unreadable_files']:
+    for warning in result['scan_warnings']:
+        print(f'WARNING: {warning["path"]}:{warning["line"]}: {warning["reason"]}', file=sys.stderr)
+    if result['unreadable_files'] or result['scan_warnings']:
         return 2
     return 0
 
