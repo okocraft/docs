@@ -24,7 +24,7 @@ class InventoryTests(unittest.TestCase):
 
     def scan(self, *args):
         p = subprocess.run([sys.executable, str(SCRIPT), '--repo', str(self.repo), *args],
-                           check=True, capture_output=True, text=True, check=False)
+                           check=True, capture_output=True, text=True)
         return json.loads(p.stdout)
 
     def test_multiline_trailing_strings_and_go_raw(self):
