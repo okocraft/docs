@@ -4,7 +4,7 @@ Use the bundled [`scripts/inventory_comments.py`](../scripts/inventory_comments.
 
 ## Run the Script
 
-From any directory, with Python 3.9+ and Git available:
+From any directory, with Python 3.11+ and Git available:
 
 ```sh
 python3 <skill-directory>/scripts/inventory_comments.py \
