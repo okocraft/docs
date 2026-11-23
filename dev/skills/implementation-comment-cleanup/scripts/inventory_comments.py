@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deterministically inventory comment candidates in tracked source/build files.
 
-No dependencies beyond Python 3.9+ and Git. This is a lexical candidate finder,
+No dependencies beyond Python 3.11+ and Git. This is a lexical candidate finder,
 not an API-documentation classifier or an instruction to delete comments.
 """
 
