@@ -57,6 +57,8 @@ The comment provides the invariant behind the implementation; it does not descri
 
 Do not add a comment merely because the code takes effort to read. First determine whether the difficulty comes from unclear code or from genuinely necessary domain knowledge.
 
+Assume readers are developers familiar with the programming language, its common idioms, and the project's basic architecture and domain. Implementation comments are not tutorials: do not explain standard language constructs, conventional framework usage, or general concepts that readers can learn from language or framework documentation. This assumption does not eliminate the need to explain non-obvious project-specific decisions or constraints.
+
 ## 3. Keep Comments Relevant to Future Maintenance
 
 **SHOULD:** Write comments that would still be useful to someone reading or modifying the code later, without knowledge of the original development session.
