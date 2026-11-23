@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Deterministically inventory comment candidates in tracked source/build files.
 
 Requires Python 3.15+ and Git; no third-party Python dependencies. This is a lexical candidate finder,
@@ -22,10 +21,10 @@ C_NAMES = {'go.mod', 'go.work'}
 SKIP_DIRS = {'.git', '.gradle', '.next', 'node_modules', 'vendor', 'dist', 'target', 'build', 'out', 'generated', '__generated__'}
 SKIP_NAMES = {'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'Cargo.lock', 'gradle.lockfile'}
 HINTS = (
-    ('task', re.compile(r'\b(?:TODO|FIXME)\b', re.I)),
-    ('legal', re.compile(r'\b(?:SPDX-License-Identifier|Copyright|All rights reserved)\b', re.I)),
-    ('tool-directive', re.compile(r'(?:\bgo:(?:build|generate|embed|linkname|noescape|nosplit)\b|\+build\b|\b(?:@ts-(?:ignore|expect-error|check|nocheck)|eslint-|biome-|noinspection|@vite-ignore|webpack|sourceMappingURL|indirect\b)|#__PURE__|^\s*#!|<reference\b)', re.I)),
-    ('generated-marker', re.compile(r'\b(?:DO NOT EDIT|@generated|Code generated)\b', re.I)),
+    ('task', re.compile(r'\b(?:TODO|FIXME)\b', re.IGNORECASE)),
+    ('legal', re.compile(r'\b(?:SPDX-License-Identifier|Copyright|All rights reserved)\b', re.IGNORECASE)),
+    ('tool-directive', re.compile(r'(?:\bgo:(?:build|generate|embed|linkname|noescape|nosplit)\b|\+build\b|\b(?:@ts-(?:ignore|expect-error|check|nocheck)|eslint-|biome-|noinspection|@vite-ignore|webpack|sourceMappingURL|indirect\b)|#__PURE__|^\s*#!|<reference\b)', re.IGNORECASE)),
+    ('generated-marker', re.compile(r'\b(?:DO NOT EDIT|@generated|Code generated)\b', re.IGNORECASE)),
 )
 
 
