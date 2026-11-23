@@ -93,6 +93,8 @@ Existing comments of this kind do not require unrelated cleanup solely to adopt 
 
 **SHOULD:** Prefer concise comments close to the relevant code. Avoid duplicating the same explanation across locations when it can be captured once at a meaningful boundary.
 
+**SHOULD:** Write implementation comments in English unless the repository explicitly follows a different language convention.
+
 Comments are not automatically better because they are detailed. A comment is useful when its information would otherwise be missing and remains valid as the code evolves.
 
 ## 6. Review Checklist
