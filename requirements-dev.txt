@@ -1,0 +1,2 @@
+# Tooling only. Skill scripts themselves use the Python standard library.
+ruff==0.17.6
