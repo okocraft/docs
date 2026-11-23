@@ -15,7 +15,7 @@
 | REWRITE | 0 | 0 | 0 |
 | ASK | 0 | — | 0 |
 
-Counts apply to **in-scope comment units**, not individual lines. Do not count excluded comments as removed.
+Counts apply to **in-scope comment units**, not individual lines. One unit expresses one independent explanation, task, or directive; related consecutive lines are one unit, but independent adjacent notes count separately. Do not count excluded comments as removed. When an ASK is resolved, reclassify it under its final decision and record the answer below.
 
 ## Comment Inventory
 
@@ -41,6 +41,14 @@ For each unresolved **ASK**, state:
 
 Do not treat an unanswered question as approval. Leave the affected comment untouched.
 
+## Resolved Questions
+
+For each answered **ASK**, record the location, the user's decision or newly verified evidence, the final KEEP / REMOVE / REWRITE classification, and whether a change was applied. Update the decision counts to reflect final classifications. If no questions were resolved, write "None."
+
+| Location | User decision or new evidence | Final classification | Applied change |
+| --- | --- | --- | --- |
+| [path:line] | [answer and supporting context] | [KEEP / REMOVE / REWRITE] | [yes / no] |
+
 ## Applied Changes
 
 - **Removed:** [locations and concise reasons]
@@ -53,7 +61,7 @@ Do not treat an unanswered question as approval. Leave the affected comment unto
 | Check | Result | Notes |
 | --- | --- | --- |
 | Diff inspection | PASS / FAIL / NOT RUN | [Confirm no accidental code/tooling changes] |
-| ``git diff --check`` | PASS / FAIL / NOT RUN | [Details] |
+| ``git diff --check <starting-revision>`` | PASS / FAIL / NOT RUN | [Include staged + unstaged changes; check new untracked files separately] |
 | Relevant build/lint/tests | PASS / FAIL / NOT RUN | [Exact command or reason unavailable] |
 
 **Final status:** [completed scope / partial coverage; unresolved decisions; material risks]
