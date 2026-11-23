@@ -183,6 +183,44 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 2)
         self.assertEqual(len(json.loads(proc.stdout)["scan_warnings"]), 1)
 
+    def test_invalid_utf8_is_reported_as_incomplete_scan(self):
+        self.write("src/invalid.ts", "// placeholder")
+        (self.repo / "src/invalid.ts").write_bytes(b"\\xff")
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPT), "--repo", str(self.repo)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 2)
+        data = json.loads(proc.stdout)
+        self.assertEqual(
+            data["unreadable_files"],
+            [{"path": "src/invalid.ts", "reason": "UnicodeDecodeError"}],
+        )
+        self.assertEqual(data["scanned_files"], [])
+
+    def test_invalid_output_path_reports_cli_error_without_traceback(self):
+        self.write("src/a.ts", "// candidate")
+        output = self.repo / "missing" / "inventory.json"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--repo",
+                str(self.repo),
+                "--output",
+                str(output),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("Cannot write inventory to", proc.stderr)
+        self.assertNotIn("Traceback", proc.stderr)
+        self.assertFalse(output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
