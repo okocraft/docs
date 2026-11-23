@@ -34,7 +34,7 @@ Search likely delimiters in those paths. Sample *candidate* searches, not defini
 rg -n --glob '*.{java,kt,kts,groovy,gradle,go,ts,tsx,js,jsx,mjs,cjs,mts,cts,jsonc}' \
   '//|/\*|\*/' .
 rg -n --glob '*.{xml}' '<!--|-->' .
-rg -n --glob '*.{toml,properties,yml,yaml,sh,mk}' '^[[:space:]]*[#!]' .
+rg -n --glob '*.{toml,properties,yml,yaml,sh,mk}' '[#!]' .
 ```
 
 Searches should additionally include build-script files with compound extensions (`*.gradle.kts`), extensionless build files, and trailing comment markers. Check files outside the default ignore rules only when explicitly in scope. Use syntax-aware tooling (parsers, language servers, IDE navigation) where available to establish which matches are comments. Match whole multiline comment units, not isolated lines. Strings containing URLs, template literals, regular expressions, and other syntax produce false positives. Some comments are embedded after statements and are not line-leading.
