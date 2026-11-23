@@ -1,0 +1,60 @@
+name: Python Skill Scripts
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'dev/skills/**/*.py'
+      - 'dev/guidelines/python-scripts.md'
+      - '.github/workflows/python-skills.yml'
+      - 'requirements-dev.txt'
+      - 'ruff.toml'
+  pull_request:
+    paths:
+      - 'dev/skills/**/*.py'
+      - 'dev/guidelines/python-scripts.md'
+      - '.github/workflows/python-skills.yml'
+      - 'requirements-dev.txt'
+      - 'ruff.toml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.15'
+      - name: Install lint tooling
+        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+      - name: Check Python source
+        run: ruff check --output-format=github dev/skills
+      - name: Check Python formatting
+        run: ruff format --check dev/skills
+
+  test:
+    name: Tests (Python 3.15)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.15'
+      - name: Compile Python skill scripts and tests
+        run: python -m compileall -q dev/skills
+      - name: Test comment inventory skill
+        run: python -m unittest discover -s dev/skills/implementation-comment-cleanup/tests -v

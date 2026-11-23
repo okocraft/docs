@@ -25,6 +25,7 @@ Read the detailed guideline only when the task touches that concern:
 | --- | --- |
 | Java project structure, Gradle, dependencies, CI, Renovate | [Java Project, Gradle, and CI](https://github.com/okocraft/docs/blob/main/dev/guidelines/java-project-gradle-and-ci.md) |
 | Test design and scope | [Testing](https://github.com/okocraft/docs/blob/main/dev/guidelines/java-testing.md) |
+| Python scripts shipped with agent skills | [Python Scripts and Tests](https://github.com/okocraft/docs/blob/main/dev/guidelines/python-scripts.md) |
 | Implementation comments, excluding API documentation | [Implementation Comments](https://github.com/okocraft/docs/blob/main/dev/guidelines/implementation-comments.md) |
 | Risk-based formal verification and proof evidence | [Formal Verification](https://github.com/okocraft/docs/blob/main/dev/guidelines/formal-verification.md) |
 | Running E2E tests against a real Paper server, evidence and reporting rules | [Minecraft / Paper End-to-End Testing](https://github.com/okocraft/docs/blob/main/dev/guidelines/minecraft-paper-e2e-testing.md) |

@@ -8,6 +8,7 @@ Shared technical documentation and development guidelines for OKOCRAFT projects.
 | --- | --- | --- |
 | Project and build | [Java Project, Gradle, and CI Guidelines](dev/guidelines/java-project-gradle-and-ci.md) | Project structure, build systems, dependencies, CI, shared workflows, and Renovate |
 | Testing | [Testing Guidelines](dev/guidelines/java-testing.md) | Test design, test scope, mocking, platform boundaries, and behavioral verification |
+| Python skill tooling | [Python Scripts and Tests](dev/guidelines/python-scripts.md) | Readable Python helpers, CLI contracts, safety, meaningful tests, and CI verification |
 | Implementation comments | [Implementation Comment Guidelines](dev/guidelines/implementation-comments.md) | When to write non-obvious, durable implementation comments; temporary TODO and FIXME handling |
 | Formal verification | [Formal Verification Guidelines](dev/guidelines/formal-verification.md) | Risk-based proof targets, specifications, Java tools, scoped evidence, AI assistance, and CI operation |
 | Scheduling and threading | [Paper and Folia Scheduling and Threading Guidelines](dev/guidelines/paper-folia-scheduling-and-threading.md) | Paper/Folia scheduler ownership, async boundaries, cross-region work, and Folia safety |
