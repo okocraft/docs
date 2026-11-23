@@ -9,40 +9,41 @@ Use this skill when asked to audit or clean **existing implementation comments**
 
 Read the [OKOCRAFT Implementation Comment Guidelines](../../guidelines/implementation-comments.md) first. This skill implements that policy, not the separate rules governing Javadoc and other API documentation comments.
 
-Default to **cleanup mode** when asked to clean comments: investigate, make safe comment-only edits, and report. Use **audit mode** when asked only to inspect or propose: classify without editing. Do not commit, push, open an issue, or create a PR unless requested.
+Use **cleanup mode** for requests to clean, remove, rewrite, or fix comments: investigate, apply safe comment-only edits, and report. Use **audit mode** for requests to audit, review, inspect, evaluate, or list comments: classify and propose actions without editing. If authorization to modify files is unclear, default to audit mode. Do not commit, push, open an issue, or create a PR unless requested.
 
 ## Principles
 
-- **Burden of proof is on the comment.** Ask what a future maintainer would lose if this comment disappeared. If no concrete benefit survives examination of the code, prefer **REMOVE**.
-- **Investigate before deciding.** Read neighboring code, relevant callers, tests, configuration, and authoritative external contracts as needed. Assume readers understand the language, common idioms, and basic project architecture; comments are not tutorials.
+- **Burden of proof is on the comment.** Ask what a future maintainer would lose if it disappeared. Prefer **REMOVE** when focused investigation finds no concrete current value; do not preserve comments just because they might once have had a purpose.
+- **Investigate proportionately.** Start with the statement and enclosing function/file; expand to directly relevant callers, tests, configuration, or external contracts only when the comment's claim requires it. Stop when the evidence supports a decision; do not trace every caller by default. Assume readers understand the language, common idioms, and basic project architecture; comments are not tutorials.
 - **Explain current reasons, not history.** Current constraints, invariants, subtle ordering requirements, and exceptional algorithm-level intent may justify comments. Obvious narration, general API explanations, and past implementation discussions do not.
-- **Do not delete uncertainty.** If a comment might encode an active constraint or warning and the evidence is insufficient, **ASK** instead of guessing.
+- **Do not erase credible uncertainty.** Use **ASK** only when a specific, plausible current constraint, warning, or unresolved obligation remains uncertain after focused investigation; do not escalate merely because an imagined purpose cannot be disproved.
 - **Keep the change focused.** Make comment-only edits; do not refactor executable code or change public contracts merely to remove comments. Propose separate work if a code refactor would be the right solution.
 - **Protect semantic comments.** Some comments affect compilation, testing, code generation, optimizers, lint, or licenses. Do not remove them based on appearance alone.
 - **Follow repository conventions.** For rewritten implementation comments, use concise English unless a repository explicitly follows another convention.
 
 ## 1. Discover Comments and Define Scope
 
-1. Read the target repository's agent instructions and local conventions. Record the requested scope, starting revision, and initial working-tree state (including staged, unstaged, and untracked files) so pre-existing changes can be distinguished from cleanup edits.
-2. Inspect tracked, human-maintained **source, tests, build scripts, and relevant configuration files**. Consult [discovery guidance](references/discovery.md) for candidate searches and comments consumed by tools.
-3. Exclude generated, vendored, minified, or third-party content from edits, along with copyright notices and documentation comments. Record excluded scope rather than classifying it as removable.
-4. Search for all applicable comment forms, including multiline and trailing comments. A text search is only candidate discovery: verify lexical context so URL literals, strings, regular expressions, and other non-comments are not misclassified. Check files that the text search might miss.
-5. Treat a logically connected block of lines as one **comment unit**. Identify its repository-relative path, line range or symbol, and relevant code context. Inventory **all** in-scope units, including comments that will remain unchanged. If the scan is incomplete, state exactly which areas were not reviewed.
-
-Do not infer documentation-comment status from syntax alone. For example, Go documentation can use ordinary ``//`` comments, whereas ``/** ... */`` may contain directives rather than API documentation. Recognize purpose and location, not just delimiters.
+1. Read the target repository's agent instructions and local conventions. Record the requested scope, starting revision, and initial working-tree state (including staged, unstaged, and untracked files).
+2. Inspect tracked, human-maintained source, tests, build scripts, and relevant configuration using the [discovery guidance](references/discovery.md). Locate comment candidates, confirm their actual syntax, and filter out documentation, legal, generated, vendored, and other out-of-scope material. Keep potentially tool-consumed comments for classification.
+3. Identify each **comment unit**: one independent explanation, task note, or directive. Consecutive lines conveying one idea (including a multiline block) are one unit; adjacent comments with independent purposes are separate units. An end-of-line comment is its own unit, not part of the code statement. A blank line normally separates units. Record its path, line range or symbol, and relevant context.
+4. If the scan is incomplete, state which files or comment forms were not reviewed. Perform inventory and classification in Section 2.
 
 ## 2. Classify Every In-scope Comment
 
-Each comment unit receives one evidence-based decision:
+Inventory **every in-scope comment unit**, including comments likely to remain unchanged. Assign exactly one evidence-based decision to each:
 
 | Decision | Condition | Action |
 | --- | --- | --- |
 | **KEEP** | Provides a verified, enduring, non-obvious reason, assumption, constraint, invariant, or exceptional algorithm-level explanation; or is an active tool-consumed directive | Preserve it and record why |
-| **REMOVE** | Repeats clear code, explains common idioms, contains irrelevant history, duplicates information elsewhere, or is verified obsolete | Remove only the comment |
-| **REWRITE** | Provides useful, verified information but is inaccurate in wording, verbose, misleading, partly historical, or fails to state the current constraint clearly | Preserve the essential information in a smaller accurate comment |
-| **ASK** | Importance or truth cannot be established; potential workaround/invariant might matter; an unfinished TODO needs a disposition; or a comment may have tooling effects | Leave untouched and request a decision |
+| **REMOVE** | After focused investigation, no useful current information remains: it repeats clear code, explains common idioms, records irrelevant history, duplicates other content, or is verified obsolete | Remove only the comment |
+| **REWRITE** | Contains a verified, useful current reason or constraint, but its wording is unclear, excessive, misleading, or mixed with history | Preserve only the useful information in an accurate, concise comment |
+| **ASK** | A specific, credible constraint, task, or tooling effect cannot be resolved through relevant investigation; removing it could lose important information or behavior | Leave untouched and request a decision |
 
-Record **concrete evidence**, not only an abstract rule: relevant methods, call sites, tests, configuration, established API contracts, or linked active issues. To justify **REMOVE**, establish that no necessary *why* would be lost. Do not classify by length, age, or language alone.
+Record **concrete evidence**, not only an abstract rule: relevant methods, call sites, tests, configuration, established API contracts, or active issues. Review the enclosing function/file first, then the nearest relevant call sites and tests, and broaden to module behavior or upstream contracts **only when a specific claim requires it**. Stop once sufficient evidence exists; exhaustive repository-wide tracing is not the default.
+
+**Decision order:** Filter out-of-scope comments first. Preserve active tool directives. For prose comments, identify any current information remaining after removing obvious narration and history. If nothing useful remains, **REMOVE**; if the remaining information is valuable but poorly expressed, **REWRITE**; if valuable and accurate, **KEEP**. Choose **ASK** only if a concrete, plausible claim remains unresolved after proportionate investigation. Failure to disprove every hypothetical benefit is not, by itself, a reason to ask.
+
+A multi-line comment with independent purposes (for example, an unfinished TODO followed by a current compatibility constraint) may contain **two units with different decisions**. Handle each separately: remove or defer the TODO as appropriate, and keep or rewrite the compatibility explanation only if the constraint is still valid.
 
 Important boundaries:
 
@@ -56,10 +57,10 @@ Important boundaries:
 
 Do not mistake removing a note for completing the work it describes.
 
-- **REMOVE** notes only when their task is demonstrably completed, superseded, duplicated, or already tracked in a verified issue and no code reminder is needed.
-- If work is still necessary and not demonstrably tracked, **ASK** whether to fix it or create/identify an issue. Do not silently drop the obligation or create issues without permission.
-- Any new work-in-progress TODO/FIXME introduced during cleanup must be resolved or removed before merge, as required by the guideline.
-- Existing TODOs do not automatically justify unrelated implementation changes. Report unresolved matters clearly.
+1. Check whether the task is already completed, superseded, or duplicated using the code, tests, and relevant issue history. If verified, **REMOVE** the obsolete note.
+2. If the work is still applicable and **legitimately deferrable**, check for a matching active issue. If verified, **REMOVE** the code TODO and record the issue in the report; the issue remains the task tracker.
+3. If the work is still required but lacks a verified issue, or if its importance or safe deferral is unclear, **ASK** whether to implement it or track it in an issue. Leave the note intact until resolved; do not silently drop the work, create an issue, or refactor code without authorization. Flag correctness-critical unfinished work rather than treating issue creation as sufficient.
+4. Any new work-in-progress TODO/FIXME introduced during cleanup must be resolved or removed before merge. Existing TODOs do not automatically justify unrelated implementation changes.
 
 ## 3. Apply Safe Edits and Escalate Ambiguity
 
@@ -91,4 +92,4 @@ Example invocations:
 
 - "Audit source comments in this repository and list what to keep, remove, rewrite, or ask me about."
 - "Clean redundant implementation and build-script comments, but ask me about uncertain ones."
-- "Review this module's comments according to the OKOCRAFT implementation comment guideline."
+- "Review this module's comments according to the OKOCRAFT implementation comment guideline (audit only)."
