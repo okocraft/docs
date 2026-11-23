@@ -20,7 +20,7 @@ Avoid making a successful return code imply that a partial or uncertain operatio
 
 ## 2. Write Readable, Maintainable Python
 
-**SHOULD:** Follow [PEP 8](https://peps.python.org/pep-0008/) and use Ruff for consistent linting. Prioritize comprehension over brevity or avoiding every duplicate line.
+**SHOULD:** Follow [PEP 8](https://peps.python.org/pep-0008/) and use Ruff for consistent linting and formatting, with its defaults unless the repository has a concrete reason to override them. Prioritize comprehension over brevity or avoiding every duplicate line.
 
 - Use descriptive names for operations and values. Extract focused functions when they clarify meaningful responsibilities, not merely to reduce line counts.
 - Keep parsing, domain decisions, and output formatting separate where practical. Favor explicit control flow over dense one-liners or clever expressions.
@@ -54,7 +54,7 @@ Keep tests deterministic, independent of network availability and developer-spec
 
 For Python scripts under `dev/skills`, this repository runs:
 
-- **Ruff lint:** `ruff check dev/skills`, with the version pinned in `requirements-dev.txt` and rules in `ruff.toml`;
+- **Ruff lint and formatting:** `ruff check dev/skills` and `ruff format --check dev/skills`, with the version pinned in `requirements-dev.txt` and minimal overrides in `ruff.toml`;
 - **syntax compilation:** `python -m compileall -q dev/skills`;
 - **unit tests:** `python -m unittest discover -s dev/skills/implementation-comment-cleanup/tests -v` for the existing comment cleanup skill.
 
