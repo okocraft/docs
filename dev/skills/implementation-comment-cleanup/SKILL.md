@@ -9,6 +9,8 @@ Use this skill when asked to audit or clean **existing implementation comments**
 
 Read the [OKOCRAFT Implementation Comment Guidelines](../../guidelines/implementation-comments.md) first. This skill implements that policy, not the separate rules governing Javadoc and other API documentation comments.
 
+For maintenance of this skill's Python helper and tests, follow the [Python Scripts and Tests guidelines](../../guidelines/python-scripts.md).
+
 Use **cleanup mode** for requests to clean, remove, rewrite, or fix comments: investigate, apply safe comment-only edits, and report. Use **audit mode** for requests to audit, review, inspect, evaluate, or list comments: classify and propose actions without editing. If authorization to modify files is unclear, default to audit mode. Do not commit, push, open an issue, or create a PR unless requested.
 
 ## Principles
