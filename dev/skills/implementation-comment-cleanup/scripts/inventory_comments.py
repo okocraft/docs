@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 
-C_LIKE = {
+SLASH_SUFFIXES = {
     ".java",
     ".kt",
     ".kts",
@@ -31,9 +31,9 @@ C_LIKE = {
     ".jsonc",
     ".json5",
 }
-XML = {".xml"}
-HASH = {".toml", ".properties", ".yml", ".yaml", ".sh", ".bash", ".zsh", ".mk"}
-HASH_NAMES = {
+XML_SUFFIXES = {".xml"}
+HASH_SUFFIXES = {".toml", ".properties", ".yml", ".yaml", ".sh", ".bash", ".zsh", ".mk"}
+HASH_FILENAMES = {
     "Makefile",
     "GNUmakefile",
     "Dockerfile",
@@ -44,8 +44,10 @@ HASH_NAMES = {
     "gradlew",
     "mvnw",
 }
-C_NAMES = {"go.mod", "go.work"}
-SKIP_DIRS = {
+SLASH_FILENAMES = {"go.mod", "go.work"}
+BACKTICK = "`"
+TEMPLATE_INTERPOLATION = "${"
+EXCLUDED_DIRECTORIES = {
     ".git",
     ".gradle",
     ".next",
@@ -58,7 +60,7 @@ SKIP_DIRS = {
     "generated",
     "__generated__",
 }
-SKIP_NAMES = {
+EXCLUDED_FILENAMES = {
     "package-lock.json",
     "pnpm-lock.yaml",
     "yarn.lock",
@@ -88,29 +90,29 @@ HINTS = (
 )
 
 
-def source_kind(name):
+def source_kind(name: str) -> str | None:
     path = PurePosixPath(name)
-    if path.name in C_NAMES or path.suffix.lower() in C_LIKE:
+    if path.name in SLASH_FILENAMES or path.suffix.lower() in SLASH_SUFFIXES:
         return "slash"
-    if path.suffix.lower() in XML:
+    if path.suffix.lower() in XML_SUFFIXES:
         return "xml"
-    if path.name in HASH_NAMES or path.suffix.lower() in HASH:
+    if path.name in HASH_FILENAMES or path.suffix.lower() in HASH_SUFFIXES:
         return "hash"
     return None
 
 
-def skip_reason(name):
+def skip_reason(name: str) -> str | None:
     path = PurePosixPath(name)
-    if any(part in SKIP_DIRS for part in path.parts[:-1]):
+    if any(part in EXCLUDED_DIRECTORIES for part in path.parts[:-1]):
         return "generated/dependency/build directory"
-    if path.name in SKIP_NAMES or path.name.endswith((".min.js", ".min.css", ".map")):
+    if path.name in EXCLUDED_FILENAMES or path.name.endswith((".min.js", ".min.css", ".map")):
         return "generated/lock/minified file"
     if re.search(r"(?:\.generated\.[^.]+|\.g\.ts|_gen\.go)$", path.name):
         return "generated filename"
     return None
 
 
-def line_number(newlines, pos):
+def line_number(newlines: list[int], pos: int) -> int:
     return bisect.bisect_left(newlines, pos) + 1
 
 
@@ -160,9 +162,9 @@ def scan_slash(text, is_go=False, warnings=None):
         while i < n:
             if text[i] == "\\":
                 i += 2
-            elif text[i] == chr(96):
+            elif text[i] == BACKTICK:
                 return i + 1
-            elif text.startswith(chr(36) + "{", i):
+            elif text.startswith(TEMPLATE_INTERPOLATION, i):
                 i = code(i + 2, interpolated=True)
             else:
                 i += 1
@@ -208,7 +210,7 @@ def scan_slash(text, is_go=False, warnings=None):
                 continue
             if text[i] == chr(96):
                 # Go backticks delimit raw strings; only JS/TS interpolates templates.
-                i = quoted(i, chr(96)) if is_go else template(i)
+                i = quoted(i, BACKTICK) if is_go else template(i)
                 continue
             i += 1
         return i
@@ -251,7 +253,7 @@ def scan_hash(text):
     return out
 
 
-def normalize_scope(path):
+def normalize_scope(path: str) -> str:
     path = path.replace("\\", "/")
     if not path or path.startswith("/") or re.match(r"^[A-Za-z]:", path):
         raise ValueError(f"--path must be relative to the repository: {path!r}")
