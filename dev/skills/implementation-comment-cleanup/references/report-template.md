@@ -5,6 +5,8 @@
 - **Coverage:** [files and directories actually reviewed, including build logic]
 - **Excluded:** [documentation comments, generated/third-party files, license text, etc.]
 - **Not reviewed:** [paths or file families, if any; otherwise "None"]
+- **Discovery output:** [path to JSON produced by scripts/inventory_comments.py]
+- **Discovery limitations:** [unreadable_files, excluded_files, unsupported syntax, supplemental checks; or "None"]
 
 ## Decision Summary
 
