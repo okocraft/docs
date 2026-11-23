@@ -105,7 +105,9 @@ def skip_reason(name: str) -> str | None:
     path = PurePosixPath(name)
     if any(part in EXCLUDED_DIRECTORIES for part in path.parts[:-1]):
         return "generated/dependency/build directory"
-    if path.name in EXCLUDED_FILENAMES or path.name.endswith((".min.js", ".min.css", ".map")):
+    if path.name in EXCLUDED_FILENAMES or path.name.endswith(
+        (".min.js", ".min.css", ".map")
+    ):
         return "generated/lock/minified file"
     if re.search(r"(?:\.generated\.[^.]+|\.g\.ts|_gen\.go)$", path.name):
         return "generated filename"
