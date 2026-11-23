@@ -55,6 +55,19 @@ The comment provides the invariant behind the implementation; it does not descri
 
 **Exception:** A short explanation of **what** a complex algorithm or section establishes MAY be useful when its overall intent or invariant remains difficult to understand after reasonable improvements to the code. This is not a reason to narrate ordinary implementation steps.
 
+For example, an invariant can clarify a non-obvious step in a monotonic-stack algorithm:
+
+```java
+// The stack holds indices in non-decreasing value order.
+// Popping an index identifies its first strictly smaller value to the right.
+while (!stack.isEmpty() && values[stack.peek()] > values[index]) {
+    nextSmaller[stack.pop()] = index;
+}
+stack.push(index);
+```
+
+This explains the property established by the algorithm, rather than paraphrasing individual statements.
+
 Do not add a comment merely because the code takes effort to read. First determine whether the difficulty comes from unclear code or from genuinely necessary domain knowledge.
 
 Assume readers are developers familiar with the programming language, its common idioms, and the project's basic architecture and domain. Implementation comments are not tutorials: do not explain standard language constructs, conventional framework usage, or general concepts that readers can learn from language or framework documentation. This assumption does not eliminate the need to explain non-obvious project-specific decisions or constraints.
