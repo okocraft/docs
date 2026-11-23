@@ -24,13 +24,21 @@ Use **cleanup mode** for requests to clean, remove, rewrite, or fix comments: in
 ## 1. Discover Comments and Define Scope
 
 1. Read the target repository's agent instructions and local conventions. Record the requested scope, starting revision, and initial working-tree state (including staged, unstaged, and untracked files).
-2. Inspect tracked, human-maintained source, tests, build scripts, and relevant configuration using the [discovery guidance](references/discovery.md). Locate comment candidates, confirm their actual syntax, and filter out documentation, legal, generated, vendored, and other out-of-scope material. Keep potentially tool-consumed comments for classification.
-3. Identify each **comment unit**: one independent explanation, task note, or directive. Consecutive lines conveying one idea (including a multiline block) are one unit; adjacent comments with independent purposes are separate units. An end-of-line comment is its own unit, not part of the code statement. A blank line normally separates units. Record its path, line range or symbol, and relevant context.
-4. If the scan is incomplete, state which files or comment forms were not reviewed. Perform inventory and classification in Section 2.
+2. **Run the bundled discovery script** against the target repository. Do not construct ad hoc search commands when the script covers the file formats involved:
+
+   ```sh
+   python3 <skill-directory>/scripts/inventory_comments.py \
+     --repo <target-repository> --output <temporary-report-path>/comment-candidates.json
+   ```
+
+   Use `--path <relative-file-or-directory>` (repeatable) to limit the scope if requested. The script deterministically enumerates tracked source/build files and produces paths, line ranges, candidate text, and advisory flags in JSON. See [discovery guidance](references/discovery.md) for its exact coverage and limitations.
+3. Inspect the generated JSON and its `scanned_files`, `excluded_files`, and `unreadable_files` entries. Verify candidates against actual syntax and remove false positives and out-of-scope documentation/legal/generated material from the review inventory. **Hints are not decisions.** Treat compiler, build, and linter directives as potentially semantic until their purpose is verified.
+4. Group verified candidates into **comment units**: one independent explanation, task note, or directive. Consecutive lines conveying one idea (including a multiline block) are one unit; adjacent comments with independent purposes are separate units. An end-of-line comment is its own unit. A blank line normally separates units.
+5. Check any explicitly requested, unsupported or untracked file families separately and disclose the supplemental search method. If a scan failed, files were unreadable, or parser limitations could affect coverage, do not claim exhaustive inventory. Perform classification in Section 2.
 
 ## 2. Classify Every In-scope Comment
 
-Inventory **every in-scope comment unit**, including comments likely to remain unchanged. Assign exactly one evidence-based decision to each:
+Inventory **every verified, in-scope comment unit** from the discovery output (including those likely to remain unchanged), preserving its location and evidence. Assign exactly one evidence-based decision to each:
 
 | Decision | Condition | Action |
 | --- | --- | --- |
@@ -76,7 +84,7 @@ Review the complete diff to ensure no code, build settings, license text, genera
 
 - Run ``git diff --check <starting-revision>`` to inspect whitespace errors across tracked changes, including staged and unstaged edits, and review the diff against that revision. Compare with the recorded initial working-tree state to distinguish pre-existing changes from cleanup edits. Check any newly created, untracked files separately, since Git diff does not include them. Run focused formatting, build, lint, or tests when relevant; report checks that could not run rather than assuming success.
 - Remember that removing a tooling directive may change compilation or behavior even when executable lines are untouched. Verify its purpose before classifying it as removable.
-- Report findings using the [report template](references/report-template.md). Include **KEEP**, **REMOVE**, **REWRITE**, and **ASK**, with locations, concise reasons, and evidence. Group repetitive findings only if every location remains discoverable.
+- Report findings using the [report template](references/report-template.md) alongside the script's JSON candidate inventory. Include **KEEP**, **REMOVE**, **REWRITE**, and **ASK**, with locations, concise reasons, and evidence. Group repetitive findings only if every location remains discoverable. Never interpret candidate counts as final comment counts without syntax review and grouping.
 - Distinguish proposed from applied changes. Report classification counts, unresolved questions, excluded/generated areas, unchecked areas, and validation results. Do not count excluded material as removed.
 - Keep extensive audit details in a separate report when needed, but do not commit it into the target repository unless asked. Do not fabricate issues, citations, test results, or certainty.
 
