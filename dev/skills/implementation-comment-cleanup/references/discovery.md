@@ -1,6 +1,6 @@
 # Comment Discovery and Exclusions
 
-This reference supports the [implementation comment cleanup skill](../SKILL.md). Use it to **find candidates**, not to declare which text is removable.
+This reference supports the [implementation comment cleanup skill](../SKILL.md). Use it to **find candidates and identify exclusions**, not to decide whether an implementation comment is worth keeping. Apply the skill's four-way classification only after discovery and filtering.
 
 ## Coverage
 
@@ -33,15 +33,25 @@ Search likely delimiters in those paths. Sample *candidate* searches, not defini
 ```sh
 rg -n --glob '*.{java,kt,kts,groovy,gradle,go,ts,tsx,js,jsx,mjs,cjs,mts,cts,jsonc}' \
   '//|/\*|\*/' .
-rg -n --glob '*.{xml}' '<!--|-->' .
+rg -n --glob 'go.mod' --glob 'go.work' '//' .
+rg -n --glob '*.xml' '<!--|-->' .
 rg -n --glob '*.{toml,properties,yml,yaml,sh,mk}' '[#!]' .
+rg -n --glob 'Makefile' --glob 'GNUmakefile' '#' .
 ```
 
-Searches should additionally include build-script files with compound extensions (`*.gradle.kts`), extensionless build files, and trailing comment markers. Check files outside the default ignore rules only when explicitly in scope. Use syntax-aware tooling (parsers, language servers, IDE navigation) where available to establish which matches are comments. Match whole multiline comment units, not isolated lines. Strings containing URLs, template literals, regular expressions, and other syntax produce false positives. Some comments are embedded after statements and are not line-leading.
+These globs and delimiters are **examples, not a fixed language list**. Adapt them to the source and build files actually present, including compound extensions and languages not shown here. The first search already covers Go source and TypeScript; the additional searches cover Go module metadata, XML comments, configuration comments, and extensionless Makefiles. Include trailing comment markers. Check ignored files only when explicitly in scope. Use syntax-aware tooling (parsers, language servers, IDE navigation) where available: string literals, URLs, template literals, and regular expressions can cause false matches. Inspect whole multiline comments, not isolated matches.
 
 Do not use a broad replacement command based solely on the above expressions.
 
-## Identify Comments That Must Not Be Treated as Ordinary Prose
+## Filter Candidates Before Classification
+
+Apply these steps in order:
+
+1. **Discover:** find potential comments, including documentation and tool directives, with syntax-appropriate searches.
+2. **Verify and exclude:** confirm that each match is a comment, not text inside a literal; exclude API documentation, legal notices, generated/vendor content, and other out-of-scope material from cleanup counts.
+3. **Classify:** retain tool-consumed directives as in-scope units and generally **KEEP** them when active. Classify the remaining implementation comments as KEEP / REMOVE / REWRITE / ASK using the skill's evidence rules.
+
+Do not exclude a comment solely because it uses documentation-style delimiters: determine whether it is actually API documentation, a directive, or ordinary implementation prose. In particular, Go doc comments often use ``//``.
 
 **Documentation and legal notices (outside normal cleanup):**
 
