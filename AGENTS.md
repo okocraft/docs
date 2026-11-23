@@ -25,6 +25,7 @@ Read the detailed guideline only when the task touches that concern:
 | --- | --- |
 | Java project structure, Gradle, dependencies, CI, Renovate | [Java Project, Gradle, and CI](https://github.com/okocraft/docs/blob/main/dev/guidelines/java-project-gradle-and-ci.md) |
 | Test design and scope | [Testing](https://github.com/okocraft/docs/blob/main/dev/guidelines/java-testing.md) |
+| Implementation comments, excluding API documentation | [Implementation Comments](https://github.com/okocraft/docs/blob/main/dev/guidelines/implementation-comments.md) |
 | Risk-based formal verification and proof evidence | [Formal Verification](https://github.com/okocraft/docs/blob/main/dev/guidelines/formal-verification.md) |
 | Running E2E tests against a real Paper server, evidence and reporting rules | [Minecraft / Paper End-to-End Testing](https://github.com/okocraft/docs/blob/main/dev/guidelines/minecraft-paper-e2e-testing.md) |
 | Paper/Folia scheduling, threading, async boundaries | [Paper and Folia Scheduling and Threading](https://github.com/okocraft/docs/blob/main/dev/guidelines/paper-folia-scheduling-and-threading.md) |
@@ -44,6 +45,7 @@ Do not duplicate a detailed guideline into local agent instructions. Point to th
 - Do not treat incidental runtime implementation details as supported platform contracts.
 - Every long-lived task, registration, executor, pool, client, or other resource MUST have a clear owner and retirement path.
 - Replacement and reload logic MUST have a clear commit point. Failure before commit leaves the previous working state active; cleanup failure after commit is not implicit rollback.
+- Implementation comments SHOULD preserve non-obvious, durable reasons or constraints rather than restate code; newly introduced TODO/FIXME notes MUST be resolved or removed before merge, with deferred work tracked in issues.
 - Tests SHOULD verify observable behavior with the lightest environment that proves it correctly.
 - A bug fix SHOULD include a regression test when the behavior is deterministic and reasonably testable.
 - Do not encode transient Java, Minecraft, dependency, or tool versions as organization policy unless the version itself is the intended rule.
